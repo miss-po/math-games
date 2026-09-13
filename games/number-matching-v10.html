@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>特教數學配對遊戲 V18 (待選卡片擴大 & 所有圖案完整可見版)</title>
+<style>
+  * {
+    box-sizing: border-box;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  html, body {
+    width: 100%;
+    height: 100%;
+    height: 100dvh;
+    margin: 0;
+    padding: 8px 12px;
+    font-family: 'Comic Sans MS', 'Microsoft JhengHei', sans-serif;
+    background-color: #f8fafc;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    overflow: hidden;
+  }
+  
+  header {
+    width: 100%;
+    max-width: 980px;
+    height: 52px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 16px;
+    background: #ffffff;
+    border-radius: 14px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+    flex-shrink: 0;
+    z-index: 100;
+  }
+  .back-btn {
+    font-size: 18px;
+    font-weight: bold;
+    color: #0284c7;
+    background: #e0f2fe;
+    padding: 8px 16px;
+    border-radius: 10px;
+    cursor: pointer;
+    border: none;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  }
+  .back-btn:active { background: #bae6fd; }
+  h1 { font-size: 22px; margin: 0; color: #0284c7; font-weight: bold; }
+  
+  .progress-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    color: #475569;
+  }
+  .progress-dot {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: #cbd5e1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    color: white;
+  }
+  .progress-dot.active { background: #f59e0b; }
+
+  #instruction-box {
+    font-size: 24px;
+    font-weight: bold;
+    color: #0f172a;
+    background: #e0f2fe;
+    padding: 8px 24px;
+    border-radius: 14px;
+    margin: 4px 0;
+    border: 3px solid #38bdf8;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  /* 主選單 */
+  #main-menu-view {
+    width: 100%;
+    max-width: 980px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+  }
+  .menu-title { font-size: 30px; font-weight: bold; color: #0284c7; }
+  .stage-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    width: 100%;
+    max-width: 750px;
+  }
+  .stage-card {
+    background: white;
+    border: 4px solid #38bdf8;
+    border-radius: 20px;
+    padding: 20px 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 6px 16px rgba(2, 132, 199, 0.15);
+    transition: transform 0.1s;
+  }
+  .stage-card:active { transform: scale(0.95); }
+  .stage-icon { font-size: 48px; margin-bottom: 6px; }
+  .stage-name { font-size: 20px; font-weight: bold; color: #0f172a; text-align: center; }
+
+  /* 遊戲畫面 */
+  #game-view {
+    width: 100%;
+    max-width: 980px;
+    flex: 1;
+    display: none;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    min-height: 0;
+  }
+
+  /* 目標放置區域 */
+  #targets-area {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    gap: 16px;
+    flex: 1;
+    min-height: 200px;
+  }
+  
+  .target-box {
+    flex: 1;
+    height: 100%;
+    border-radius: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 8px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+    position: relative;
+    border: 4px solid #94a3b8;
+    transition: transform 0.15s, border-color 0.15s;
+    cursor: pointer;
+    overflow: hidden;
+  }
+  .target-box.hover {
+    transform: scale(1.04);
+    border-color: #f59e0b !important;
+    background-color: #fef3c7 !important;
+  }
+  .target-label { font-size: 30px; font-weight: 900; margin-bottom: 2px; }
+
+  .target-hint-only {
+    width: 65px;
+    height: 50px;
+    pointer-events: none;
+    margin-top: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 40px;
+  }
+  .target-hint-only svg { width: 100%; height: 100%; }
+  
+  .placed-items-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    flex: 1;
+    min-height: 90px;
+    margin-top: 4px;
+    overflow-y: auto;
+  }
+
+  /* 下方待選區域 */
+  #source-area {
+    width: 100%;
+    height: 145px;
+    background: #ffffff;
+    border: 4px solid #cbd5e1;
+    border-radius: 20px;
+    display: flex;
+    justify-content: space-evenly;
+    align-items: center;
+    position: relative;
+    padding: 0 10px;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  /* 擴大待選卡片外殼：120px 寬 x 115px 高 */
+  .draggable-item {
+    width: 120px;
+    height: 115px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: grab;
+    position: relative;
+    background: #f8fafc;
+    border-radius: 18px;
+    border: 3.5px solid #94a3b8;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    touch-action: none;
+    flex-shrink: 0;
+    overflow: hidden;
+    padding: 2px;
+  }
+  .draggable-item.dragging {
+    cursor: grabbing;
+    opacity: 0.95;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+    border-color: #38bdf8;
+  }
+  .draggable-item.selected {
+    border-color: #0284c7;
+    background: #e0f2fe;
+    transform: scale(1.06);
+    box-shadow: 0 0 15px rgba(56, 189, 248, 0.6);
+  }
+
+  /* ==========================================
+     適度微調圖案尺寸（38px），確保 1~5 個圖案皆可完整顯示
+     ========================================== */
+  
+  /* 1. 所有 Emoji 圖案統一為 38px，確保多個圖案全數放入卡片中 */
+  .graphic-unit {
+    width: 38px;
+    height: 38px;
+    font-size: 34px;
+    line-height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    flex-shrink: 0;
+  }
+
+  /* 2. SVG 形狀 */
+  .draggable-item svg {
+    width: 50px;
+    height: 50px;
+    pointer-events: none;
+    flex-shrink: 0;
+  }
+
+  /* 3. 數字文字 */
+  .number-unit {
+    font-size: 52px;
+    font-weight: 900;
+    color: #0f172a;
+    line-height: 1;
+    pointer-events: none;
+  }
+
+  /* 多圖案排列容器：一屏完整顯示，無需滑動 */
+  .graphics-group-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+    width: 100%;
+    height: 100%;
+    gap: 2px;
+    pointer-events: none;
+  }
+
+  /* 配對成功後的放置卡片 */
+  .placed-item {
+    min-width: 90px;
+    height: 85px;
+    padding: 4px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    background: #ffffff;
+    border-radius: 14px;
+    border: 3.5px solid #22c55e;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.12);
+    flex-shrink: 0;
+  }
+  
+  .check-mark {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 26px;
+    height: 26px;
+    background: #22c55e;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    font-weight: bold;
+    border: 2px solid white;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    z-index: 10;
+  }
+
+  #reward-modal {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.7);
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+  }
+  .reward-content {
+    background: white;
+    padding: 35px 45px;
+    border-radius: 25px;
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  }
+  .star-icon { font-size: 80px; animation: bounce 0.6s infinite alternate; }
+  @keyframes bounce { from { transform: translateY(0); } to { transform: translateY(-15px); } }
+  .btn {
+    padding: 14px 28px;
+    font-size: 22px;
+    background-color: #0284c7;
+    color: white;
+    border: none;
+    border-radius: 14px;
+    cursor: pointer;
+    font-weight: bold;
+    margin: 6px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <button class="back-btn" id="header-back-btn" onclick="showMainMenu()">🏠 主選單</button>
+  <h1 id="group-title">配對遊戲</h1>
+  <div class="progress-container">
+    <span>進度：</span>
+    <div class="progress-dot" id="dot-1">1</div>
+    <div class="progress-dot" id="dot-2">2</div>
+    <div class="progress-dot" id="dot-3">3</div>
+    <div class="progress-dot" id="dot-4">4</div>
+    <div class="progress-dot" id="dot-5">5</div>
+  </div>
+</header>
+
+<div id="instruction-box">請選擇關卡開始遊戲</div>
+
+<!-- 1. 主選單 -->
+<div id="main-menu-view">
+  <div class="menu-title">請選擇練習主題 🎮</div>
+  <div class="stage-grid">
+    <div class="stage-card" onclick="startStage(0)">
+      <div class="stage-icon">🎨</div>
+      <div class="stage-name">1. 顏色配對</div>
+    </div>
+    <div class="stage-card" onclick="startStage(1)">
+      <div class="stage-icon">📐</div>
+      <div class="stage-name">2. 形狀配對</div>
+    </div>
+    <div class="stage-card" onclick="startStage(2)">
+      <div class="stage-icon">🍎</div>
+      <div class="stage-name">3. 圖案配對</div>
+    </div>
+    <div class="stage-card" onclick="startStage(3)">
+      <div class="stage-icon">🔢</div>
+      <div class="stage-name">4. 數字配對 (1對1)</div>
+    </div>
+    <div class="stage-card" onclick="startStage(4)">
+      <div class="stage-icon">🧮</div>
+      <div class="stage-name">5. 數量與數字</div>
+    </div>
+  </div>
+</div>
+
+<!-- 2. 遊戲進行畫面 -->
+<div id="game-view">
+  <div id="targets-area"></div>
+  <div id="source-area"></div>
+</div>
+
+<div id="reward-modal">
+  <div class="reward-content">
+    <div class="star-icon">🌟 🍎 🌟</div>
+    <h2 style="font-size: 32px; color: #0284c7; margin: 12px 0;">好叻啊！你完成了5條題目！</h2>
+    <p style="font-size: 20px; color: #475569; margin-bottom: 20px;">請選擇下一步</p>
+    <button class="btn" onclick="showMainMenu()">選擇其他關卡 🏠</button>
+    <button class="btn" style="background-color: #22c55e;" onclick="startNextGroup()">下一關 ➔</button>
+  </div>
+</div>
+
+<script>
+  const SVG_LIB = {
+    shape_triangle: `<svg viewBox="0 0 100 100"><polygon points="50,10 95,90 5,90" fill="#1e3a8a" stroke="#ffffff" stroke-width="4" /></svg>`,
+    shape_rect: `<svg viewBox="0 0 100 100"><rect x="5" y="20" width="90" height="60" rx="5" fill="#1e3a8a" stroke="#ffffff" stroke-width="4" /></svg>`,
+    shape_circle: `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="42" fill="#1e3a8a" stroke="#ffffff" stroke-width="4" /></svg>`,
+    shape_star: `<svg viewBox="0 0 100 100"><polygon points="50,5 64,36 98,38 71,61 80,95 50,75 20,95 29,61 2,38 36,36" fill="#1e3a8a" stroke="#ffffff" stroke-width="4" /></svg>`,
+    outline_triangle: `<svg viewBox="0 0 100 100"><polygon points="50,10 95,90 5,90" fill="none" stroke="#1e3a8a" stroke-width="10" /></svg>`,
+    outline_rect: `<svg viewBox="0 0 100 100"><rect x="5" y="20" width="90" height="60" rx="5" fill="none" stroke="#1e3a8a" stroke-width="10" /></svg>`,
+    outline_circle: `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="42" fill="none" stroke="#1e3a8a" stroke-width="10" /></svg>`,
+    outline_star: `<svg viewBox="0 0 100 100"><polygon points="50,5 64,36 98,38 71,61 80,95 50,75 20,95 29,61 2,38 36,36" fill="none" stroke="#1e3a8a" stroke-width="8" /></svg>`
+  };
+
+  const TARGET_DEFS = {
+    red: { id: "red", name: "紅色", bg: "#ef4444", color: "#ffffff" },
+    yellow: { id: "yellow", name: "黃色", bg: "#eab308", color: "#ffffff" },
+    blue: { id: "blue", name: "藍色", bg: "#3b82f6", color: "#ffffff" },
+    green: { id: "green", name: "綠色", bg: "#22c55e", color: "#ffffff" },
+    triangle: { id: "triangle", name: "三角形", bg: "#ffffff", color: "#1e3a8a", outline: "outline_triangle" },
+    rect: { id: "rect", name: "長方形", bg: "#ffffff", color: "#1e3a8a", outline: "outline_rect" },
+    circle: { id: "circle", name: "圓形", bg: "#ffffff", color: "#1e3a8a", outline: "outline_circle" },
+    star: { id: "star", name: "星形", bg: "#ffffff", color: "#1e3a8a", outline: "outline_star" },
+    candy: { id: "candy", name: "糖果", bg: "#fce7f3", color: "#ec4899", borderColor: "#ec4899", emojiHint: "🍬" },
+    bread: { id: "bread", name: "麵包", bg: "#fef3c7", color: "#d97706", borderColor: "#d97706", emojiHint: "🍞" },
+    donut: { id: "donut", name: "甜甜圈", bg: "#fed7aa", color: "#ea580c", borderColor: "#ea580c", emojiHint: "🍩" },
+    burger: { id: "burger", name: "漢堡", bg: "#fef08a", color: "#ca8a04", borderColor: "#ca8a04", emojiHint: "🍔" },
+    apple: { id: "apple", name: "蘋果", bg: "#fee2e2", color: "#dc2626", borderColor: "#dc2626", emojiHint: "🍎" },
+    banana: { id: "banana", name: "香蕉", bg: "#fef9c3", color: "#ca8a04", borderColor: "#ca8a04", emojiHint: "🍌" },
+    watermelon: { id: "watermelon", name: "西瓜", bg: "#dcfce7", color: "#16a34a", borderColor: "#16a34a", emojiHint: "🍉" },
+    dog: { id: "dog", name: "小狗", bg: "#ffedd5", color: "#c2410c", borderColor: "#c2410c", emojiHint: "🐶" },
+    cat: { id: "cat", name: "小貓", bg: "#e0e7ff", color: "#4338ca", borderColor: "#4338ca", emojiHint: "🐱" },
+    num1: { id: "num1", name: "1", bg: "#e0f2fe", color: "#0284c7", borderColor: "#0284c7" },
+    num2: { id: "num2", name: "2", bg: "#fef9c3", color: "#ca8a04", borderColor: "#ca8a04" },
+    num3: { id: "num3", name: "3", bg: "#dcfce7", color: "#16a34a", borderColor: "#16a34a" },
+    num4: { id: "num4", name: "4", bg: "#fce7f3", color: "#ec4899", borderColor: "#ec4899" },
+    num5: { id: "num5", name: "5", bg: "#ffedd5", color: "#c2410c", borderColor: "#c2410c" }
+  };
+
+  const questionGroups = [
+    {
+      groupTitle: "顏色配對",
+      instruction: "請配對相同的顏色 (拖拽或點擊)",
+      questions: [
+        { targets: [TARGET_DEFS.red, TARGET_DEFS.yellow], items: [{ type: "red", icon: "🔴" }, { type: "yellow", icon: "🟡" }] },
+        { targets: [TARGET_DEFS.blue, TARGET_DEFS.green], items: [{ type: "green", icon: "🟩" }, { type: "blue", icon: "🟦" }, { type: "green", icon: "🟩" }] },
+        { targets: [TARGET_DEFS.red, TARGET_DEFS.yellow, TARGET_DEFS.blue], items: [{ type: "red", icon: "🔴" }, { type: "yellow", icon: "🟡" }, { type: "blue", icon: "🔵" }] },
+        { targets: [TARGET_DEFS.blue, TARGET_DEFS.yellow, TARGET_DEFS.green], items: [{ type: "green", icon: "🟩" }, { type: "blue", icon: "🔷" }, { type: "yellow", icon: "🟡" }, { type: "blue", icon: "🔵" }] },
+        { targets: [TARGET_DEFS.red, TARGET_DEFS.yellow, TARGET_DEFS.blue, TARGET_DEFS.green], items: [{ type: "red", icon: "🔴" }, { type: "blue", icon: "🔵" }, { type: "green", icon: "🟩" }, { type: "yellow", icon: "🟡" }, { type: "red", icon: "🔴" }] }
+      ]
+    },
+    {
+      groupTitle: "形狀配對",
+      instruction: "請配對相同的形狀 (拖拽或點擊)",
+      questions: [
+        { targets: [TARGET_DEFS.triangle, TARGET_DEFS.circle], items: [{ type: "triangle", svg: "shape_triangle" }, { type: "circle", svg: "shape_circle" }] },
+        { targets: [TARGET_DEFS.rect, TARGET_DEFS.circle], items: [{ type: "circle", svg: "shape_circle" }, { type: "rect", svg: "shape_rect" }, { type: "rect", svg: "shape_rect" }] },
+        { targets: [TARGET_DEFS.triangle, TARGET_DEFS.rect, TARGET_DEFS.circle], items: [{ type: "triangle", svg: "shape_triangle" }, { type: "rect", svg: "shape_rect" }, { type: "circle", svg: "shape_circle" }] },
+        { targets: [TARGET_DEFS.triangle, TARGET_DEFS.circle, TARGET_DEFS.star], items: [{ type: "star", svg: "shape_star" }, { type: "triangle", svg: "shape_triangle" }, { type: "circle", svg: "shape_circle" }, { type: "star", svg: "shape_star" }] },
+        { targets: [TARGET_DEFS.triangle, TARGET_DEFS.rect, TARGET_DEFS.circle, TARGET_DEFS.star], items: [{ type: "star", svg: "shape_star" }, { type: "rect", svg: "shape_rect" }, { type: "triangle", svg: "shape_triangle" }, { type: "circle", svg: "shape_circle" }, { type: "rect", svg: "shape_rect" }] }
+      ]
+    },
+    {
+      groupTitle: "圖案配對",
+      instruction: "請配對相同的圖案 (拖拽或點擊)",
+      questions: [
+        { targets: [TARGET_DEFS.apple, TARGET_DEFS.banana], items: [{ type: "apple", icon: "🍎" }, { type: "banana", icon: "🍌" }] },
+        { targets: [TARGET_DEFS.dog, TARGET_DEFS.cat], items: [{ type: "cat", icon: "🐱" }, { type: "dog", icon: "🐶" }, { type: "cat", icon: "🐱" }] },
+        { targets: [TARGET_DEFS.candy, TARGET_DEFS.bread, TARGET_DEFS.donut], items: [{ type: "candy", icon: "🍬" }, { type: "bread", icon: "🍞" }, { type: "donut", icon: "🍩" }] },
+        { targets: [TARGET_DEFS.apple, TARGET_DEFS.banana, TARGET_DEFS.watermelon], items: [{ type: "watermelon", icon: "🍉" }, { type: "apple", icon: "🍎" }, { type: "banana", icon: "🍌" }, { type: "apple", icon: "🍎" }] },
+        { targets: [TARGET_DEFS.candy, TARGET_DEFS.bread, TARGET_DEFS.donut, TARGET_DEFS.burger], items: [{ type: "burger", icon: "🍔" }, { type: "candy", icon: "🍬" }, { type: "donut", icon: "🍩" }, { type: "bread", icon: "🍞" }, { type: "burger", icon: "🍔" }] }
+      ]
+    },
+    {
+      groupTitle: "數字配對 (1對1)",
+      instruction: "請配對相同的數字 (例如 1 配對 1)",
+      questions: [
+        { targets: [TARGET_DEFS.num1, TARGET_DEFS.num2], items: [{ type: "num1", isNumber: true, text: "1" }, { type: "num2", isNumber: true, text: "2" }] },
+        { targets: [TARGET_DEFS.num2, TARGET_DEFS.num3], items: [{ type: "num3", isNumber: true, text: "3" }, { type: "num2", isNumber: true, text: "2" }] },
+        { targets: [TARGET_DEFS.num1, TARGET_DEFS.num2, TARGET_DEFS.num3], items: [{ type: "num1", isNumber: true, text: "1" }, { type: "num3", isNumber: true, text: "3" }, { type: "num2", isNumber: true, text: "2" }] },
+        { targets: [TARGET_DEFS.num3, TARGET_DEFS.num4, TARGET_DEFS.num5], items: [{ type: "num5", isNumber: true, text: "5" }, { type: "num3", isNumber: true, text: "3" }, { type: "num4", isNumber: true, text: "4" }] },
+        { targets: [TARGET_DEFS.num1, TARGET_DEFS.num3, TARGET_DEFS.num4, TARGET_DEFS.num5], items: [{ type: "num1", isNumber: true, text: "1" }, { type: "num4", isNumber: true, text: "4" }, { type: "num5", isNumber: true, text: "5" }, { type: "num3", isNumber: true, text: "3" }] }
+      ]
+    },
+    {
+      groupTitle: "數量與數字配對",
+      instruction: "請數一數圖案數量，拖至對應數字",
+      questions: [
+        { targets: [TARGET_DEFS.num1, TARGET_DEFS.num2], items: [{ type: "num1", icon: "🍎" }, { type: "num2", icon: "🍎🍎" }] },
+        { targets: [TARGET_DEFS.num2, TARGET_DEFS.num3], items: [{ type: "num3", icon: "⭐️⭐️⭐️" }, { type: "num2", icon: "⭐️⭐️" }] },
+        { targets: [TARGET_DEFS.num1, TARGET_DEFS.num2, TARGET_DEFS.num3], items: [{ type: "num1", icon: "🐶" }, { type: "num3", icon: "🐶🐶🐶" }, { type: "num2", icon: "🐶🐶" }] },
+        { targets: [TARGET_DEFS.num3, TARGET_DEFS.num4, TARGET_DEFS.num5], items: [{ type: "num5", icon: "🍬🍬🍬🍬🍬" }, { type: "num3", icon: "🍬🍬🍬" }, { type: "num4", icon: "🍬🍬🍬🍬" }] },
+        { targets: [TARGET_DEFS.num1, TARGET_DEFS.num3, TARGET_DEFS.num4, TARGET_DEFS.num5], items: [{ type: "num1", icon: "🚗" }, { type: "num4", icon: "🚗🚗🚗🚗" }, { type: "num5", icon: "🚗🚗🚗🚗🚗" }, { type: "num3", icon: "🚗🚗🚗" }] }
+      ]
+    }
+  ];
+
+  function shuffle(array) {
+    let currentIndex = array.length, randomIndex;
+    const newArray = [...array];
+    while (currentIndex !== 0) {
+      randomIndex = Math.floor(Math.random() * currentIndex);
+      currentIndex--;
+      [newArray[currentIndex], newArray[randomIndex]] = [newArray[randomIndex], newArray[currentIndex]];
+    }
+    return newArray;
+  }
+
+  let currentGroupIdx = 0;
+  let currentQuestionIdx = 0;
+  let remainingItems = 0;
+  let activeDraggable = null;
+  let selectedElement = null;
+  let startX = 0, startY = 0;
+  let initialLeft = 0, initialTop = 0;
+  let isDragging = false;
+
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  function playSound(type) {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain); gain.connect(audioCtx.destination);
+
+    if (type === 'success') {
+      osc.frequency.setValueAtTime(523.25, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(659.25, audioCtx.currentTime + 0.15);
+      gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+      osc.start(); osc.stop(audioCtx.currentTime + 0.2);
+    } else if (type === 'fail') {
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(180, audioCtx.currentTime);
+      osc.frequency.linearRampToValueAtTime(110, audioCtx.currentTime + 0.25);
+      gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
+      osc.start(); osc.stop(audioCtx.currentTime + 0.25);
+    } else if (type === 'complete') {
+      [523, 659, 783, 1046].forEach((freq, idx) => {
+        const o = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        o.connect(g); o.connect(audioCtx.destination);
+        o.frequency.value = freq;
+        g.gain.setValueAtTime(0.2, audioCtx.currentTime + idx * 0.1);
+        g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + idx * 0.1 + 0.3);
+        o.start(audioCtx.currentTime + idx * 0.1);
+        o.stop(audioCtx.currentTime + idx * 0.1 + 0.3);
+      });
+    }
+  }
+
+  function speak(text) {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const msg = new SpeechSynthesisUtterance(text);
+      msg.lang = 'zh-HK';
+      msg.rate = 0.85;
+      window.speechSynthesis.speak(msg);
+    }
+  }
+
+  function showMainMenu() {
+    document.getElementById('reward-modal').style.display = 'none';
+    document.getElementById('game-view').style.display = 'none';
+    document.getElementById('main-menu-view').style.display = 'flex';
+    document.getElementById('group-title').innerText = "配對遊戲";
+    document.getElementById('instruction-box').innerText = "請選擇關卡開始遊戲";
+  }
+
+  function startStage(idx) {
+    currentGroupIdx = idx;
+    currentQuestionIdx = 0;
+    document.getElementById('main-menu-view').style.display = 'none';
+    document.getElementById('game-view').style.display = 'flex';
+    loadQuestion();
+  }
+
+  function loadQuestion() {
+    selectedElement = null;
+    const group = questionGroups[currentGroupIdx];
+    const qData = group.questions[currentQuestionIdx];
+
+    document.getElementById('group-title').innerText = group.groupTitle;
+    document.getElementById('instruction-box').innerText = group.instruction;
+
+    for (let i = 1; i <= 5; i++) {
+      const dot = document.getElementById(`dot-${i}`);
+      if (i <= currentQuestionIdx) dot.classList.add('active');
+      else dot.classList.remove('active');
+    }
+
+    const targetsArea = document.getElementById('targets-area');
+    targetsArea.innerHTML = '';
+
+    const shuffledTargets = shuffle(qData.targets);
+
+    shuffledTargets.forEach((tgt) => {
+      const box = document.createElement('div');
+      box.className = 'target-box';
+      box.dataset.id = tgt.id;
+      box.style.backgroundColor = tgt.bg;
+      box.style.borderColor = tgt.borderColor || '#94a3b8';
+
+      box.addEventListener('click', () => handleTargetClick(box));
+
+      const label = document.createElement('div');
+      label.className = 'target-label';
+      label.innerText = tgt.name;
+      label.style.color = tgt.color;
+      box.appendChild(label);
+
+      if (tgt.outline) {
+        const shapeDiv = document.createElement('div');
+        shapeDiv.className = 'target-hint-only';
+        shapeDiv.innerHTML = SVG_LIB[tgt.outline];
+        box.appendChild(shapeDiv);
+      }
+
+      if (tgt.emojiHint) {
+        const emojiDiv = document.createElement('div');
+        emojiDiv.className = 'target-hint-only';
+        emojiDiv.innerText = tgt.emojiHint;
+        box.appendChild(emojiDiv);
+      }
+
+      const container = document.createElement('div');
+      container.className = 'placed-items-container';
+      box.appendChild(container);
+
+      targetsArea.appendChild(box);
+    });
+
+    const sourceArea = document.getElementById('source-area');
+    sourceArea.innerHTML = '';
+    remainingItems = qData.items.length;
+
+    const shuffledItems = shuffle(qData.items);
+
+    shuffledItems.forEach((itemData, idx) => {
+      const item = document.createElement('div');
+      item.className = 'draggable-item';
+      item.dataset.type = itemData.type;
+      
+      /* 生成嚴格等大的內容結構 */
+      if (itemData.svg) {
+        item.innerHTML = SVG_LIB[itemData.svg];
+      } else if (itemData.isNumber) {
+        item.innerHTML = `<div class="number-unit">${itemData.text}</div>`;
+      } else {
+        const emojiArray = Array.from(itemData.icon);
+        let groupContainerHtml = '<div class="graphics-group-container">';
+        emojiArray.forEach(char => {
+          groupContainerHtml += `<div class="graphic-unit">${char}</div>`;
+        });
+        groupContainerHtml += '</div>';
+        item.innerHTML = groupContainerHtml;
+      }
+
+      item.id = `item-${idx}`;
+
+      sourceArea.appendChild(item);
+      makeDraggable(item);
+    });
+
+    if (currentQuestionIdx === 0) {
+      speak(group.instruction);
+    }
+  }
+
+  function makeDraggable(elem) {
+    const onPointerDown = (e) => {
+      if (e.button !== undefined && e.button !== 0) return;
+      
+      activeDraggable = elem;
+      isDragging = false;
+      
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+      startX = clientX;
+      startY = clientY;
+
+      const rect = elem.getBoundingClientRect();
+      initialLeft = rect.left;
+      initialTop = rect.top;
+
+      window.addEventListener('mousemove', onPointerMove, { passive: false });
+      window.addEventListener('mouseup', onPointerUp);
+      window.addEventListener('touchmove', onPointerMove, { passive: false });
+      window.addEventListener('touchend', onPointerUp);
+    };
+
+    const onPointerMove = (e) => {
+      if (!activeDraggable) return;
+
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+      const deltaX = clientX - startX;
+      const deltaY = clientY - startY;
+
+      if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
+        isDragging = true;
+      }
+
+      if (isDragging) {
+        if (e.cancelable) e.preventDefault();
+        
+        elem.classList.add('dragging');
+        elem.style.position = 'fixed';
+        elem.style.left = `${initialLeft + deltaX}px`;
+        elem.style.top = `${initialTop + deltaY}px`;
+        elem.style.zIndex = '1000';
+
+        checkHover(clientX, clientY);
+      }
+    };
+
+    const onPointerUp = (e) => {
+      window.removeEventListener('mousemove', onPointerMove);
+      window.removeEventListener('mouseup', onPointerUp);
+      window.removeEventListener('touchmove', onPointerMove);
+      window.removeEventListener('touchend', onPointerUp);
+
+      if (!activeDraggable) return;
+
+      if (isDragging) {
+        const clientX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
+        const clientY = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
+
+        const targetHit = checkDropTarget(clientX, clientY);
+        const itemType = elem.dataset.type;
+
+        if (targetHit && targetHit.dataset.id === itemType) {
+          commitSuccess(elem, targetHit);
+        } else {
+          playSound('fail');
+          speak("再試一次");
+
+          elem.classList.remove('dragging');
+          elem.style.position = 'relative';
+          elem.style.left = '0px';
+          elem.style.top = '0px';
+          elem.style.zIndex = '10';
+        }
+      } else {
+        if (selectedElement === elem) {
+          elem.classList.remove('selected');
+          selectedElement = null;
+        } else {
+          document.querySelectorAll('.draggable-item').forEach(el => el.classList.remove('selected'));
+          selectedElement = elem;
+          elem.classList.add('selected');
+        }
+      }
+
+      clearHover();
+      activeDraggable = null;
+      setTimeout(() => { isDragging = false; }, 50);
+    };
+
+    elem.addEventListener('mousedown', onPointerDown);
+    elem.addEventListener('touchstart', onPointerDown, { passive: false });
+  }
+
+  function handleTargetClick(targetBox) {
+    if (!selectedElement) return;
+
+    const itemType = selectedElement.dataset.type;
+    if (targetBox.dataset.id === itemType) {
+      commitSuccess(selectedElement, targetBox);
+    } else {
+      playSound('fail');
+      speak("再試一次");
+      selectedElement.classList.remove('selected');
+      selectedElement = null;
+    }
+  }
+
+  function commitSuccess(itemElem, targetBox) {
+    playSound('success');
+    
+    const container = targetBox.querySelector('.placed-items-container');
+    const placed = document.createElement('div');
+    placed.className = 'placed-item';
+    placed.innerHTML = itemElem.innerHTML;
+
+    const check = document.createElement('div');
+    check.className = 'check-mark';
+    check.innerText = '✓';
+    placed.appendChild(check);
+
+    container.appendChild(placed);
+
+    itemElem.remove();
+    selectedElement = null;
+    remainingItems--;
+
+    if (remainingItems === 0) {
+      currentQuestionIdx++;
+      if (currentQuestionIdx >= 5) {
+        document.getElementById('dot-5').classList.add('active');
+        setTimeout(showRewardModal, 400);
+      } else {
+        setTimeout(loadQuestion, 400);
+      }
+    }
+  }
+
+  function checkHover(x, y) {
+    clearHover();
+    const targetHit = checkDropTarget(x, y);
+    if (targetHit) targetHit.classList.add('hover');
+  }
+
+  function clearHover() {
+    document.querySelectorAll('.target-box').forEach(b => b.classList.remove('hover'));
+  }
+
+  function checkDropTarget(x, y) {
+    const boxes = document.querySelectorAll('.target-box');
+    const tolerance = 20;
+    for (let box of boxes) {
+      const rect = box.getBoundingClientRect();
+      if (x >= (rect.left - tolerance) && x <= (rect.right + tolerance) &&
+          y >= (rect.top - tolerance) && y <= (rect.bottom + tolerance)) {
+        return box;
+      }
+    }
+    return null;
+  }
+
+  function showRewardModal() {
+    playSound('complete');
+    document.getElementById('reward-modal').style.display = 'flex';
+    speak("好叻啊！你完成了5條題目！");
+  }
+
+  function startNextGroup() {
+    document.getElementById('reward-modal').style.display = 'none';
+    currentQuestionIdx = 0;
+    currentGroupIdx = (currentGroupIdx + 1) % questionGroups.length;
+    loadQuestion();
+  }
+
+  window.onload = () => showMainMenu();
+</script>
+</body>
+</html>

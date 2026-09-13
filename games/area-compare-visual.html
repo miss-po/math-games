@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>視覺直接比較面積 - 多關卡版</title>
+<style>
+  * { box-sizing: border-box; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+  html, body {
+    width: 100%; height: 100%; height: 100dvh; margin: 0; padding: 12px 16px;
+    font-family: 'Comic Sans MS', 'Microsoft JhengHei', sans-serif;
+    background-color: #fdf4ff; display: flex; flex-direction: column; align-items: center; justify-content: space-between; overflow: hidden;
+  }
+  
+  header {
+    width: 100%; max-width: 980px; height: 64px; display: flex; justify-content: space-between; align-items: center;
+    padding: 0 20px; background: #ffffff; border-radius: 18px; box-shadow: 0 4px 10px rgba(0,0,0,0.06); flex-shrink: 0;
+  }
+  .back-btn { font-size: 22px; font-weight: bold; color: #d946ef; text-decoration: none; padding: 8px 18px; background: #fae8ff; border-radius: 12px; }
+  
+  .stage-select {
+    font-size: 20px;
+    font-weight: bold;
+    color: #a21caf;
+    background: #f5d0fe;
+    border: 2px solid #d946ef;
+    padding: 6px 14px;
+    border-radius: 12px;
+    cursor: pointer;
+    outline: none;
+  }
+
+  .progress-container { display: flex; align-items: center; gap: 10px; font-size: 20px; font-weight: bold; color: #475569; }
+  .progress-dot { width: 38px; height: 38px; border-radius: 50%; background: #cbd5e1; display: flex; align-items: center; justify-content: center; font-size: 18px; color: white; }
+  .progress-dot.active { background: #d946ef; font-weight: bold; transform: scale(1.1); }
+
+  #instruction-box {
+    font-size: 32px; font-weight: bold; color: #0f172a; background: #fae8ff; padding: 14px 32px;
+    border-radius: 20px; margin: 6px 0; border: 4px solid #f0abfc; text-align: center; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  
+  .text-highlight-large {
+    font-size: 2em;
+    font-weight: 900;
+    color: #f472b6; /* 粉紅色 */
+    display: inline-block;
+    vertical-align: middle;
+    line-height: 1;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+
+  .text-highlight-small {
+    font-size: 0.5em;
+    font-weight: 900;
+    color: #38bdf8; /* 天藍色 */
+    display: inline-block;
+    vertical-align: middle;
+    line-height: 1;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+
+  #game-container {
+    width: 100%; max-width: 980px; flex: 1; display: flex; flex-direction: column;
+    justify-content: center; align-items: center; gap: 30px; min-height: 0;
+  }
+
+  .shapes-display-area {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 50px;
+    width: 100%;
+  }
+
+  .visual-shape {
+    border: 6px solid #0f172a;
+    box-shadow: 0 12px 28px rgba(0,0,0,0.15);
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .visual-shape:hover { transform: scale(1.06); }
+  .visual-shape:active { transform: scale(0.94); }
+
+  .wrong-answer { animation: flashShake 0.6s ease-in-out 1; }
+
+  @keyframes flashShake {
+    0% { transform: translateX(0); border-color: #ef4444; background-color: #fee2e2; }
+    20% { transform: translateX(-8px); }
+    40% { transform: translateX(8px); }
+    60% { transform: translateX(-6px); }
+    80% { transform: translateX(6px); }
+    100% { transform: translateX(0); border-color: #0f172a; }
+  }
+
+  /* 彈窗樣式 */
+  #stage-pass-modal, #stage-retry-modal, #reward-modal {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7);
+    display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 1000;
+  }
+  
+  .modal-content { 
+    background: white; padding: 35px 45px; border-radius: 25px; 
+    text-align: center; max-width: 500px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  }
+
+  .star-icon { font-size: 90px; margin-bottom: 8px; animation: bounceStar 0.8s infinite alternate cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+  @keyframes bounceStar { from { transform: translateY(0) scale(1); } to { transform: translateY(-12px) scale(1.1); } }
+
+  .hand-icon { font-size: 100px; margin-bottom: 10px; animation: waveHand 1s infinite alternate ease-in-out; }
+  @keyframes waveHand { from { transform: rotate(-10deg); } to { transform: rotate(10deg); } }
+
+  .btn-next-stage, .btn-retry-stage, .btn-restart { 
+    padding: 16px 36px; font-size: 26px; background-color: #d946ef; color: white; 
+    border: none; border-radius: 16px; cursor: pointer; font-weight: bold; 
+    box-shadow: 0 6px 16px rgba(217, 70, 239, 0.3); margin-top: 20px; 
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <a href="../index.html" class="back-btn">🏠 主選單</a>
+  
+  <select class="stage-select" id="stage-select" onchange="onSelectStage(this.value)">
+    <option value="0">關卡 1 (雙色二選一)</option>
+    <option value="1">關卡 2 (同色二選一)</option>
+    <option value="2">關卡 3 (同色三選一)</option>
+  </select>
+
+  <div class="progress-container">
+    <span>進度：</span>
+    <div class="progress-dot" id="dot-1">1</div>
+    <div class="progress-dot" id="dot-2">2</div>
+    <div class="progress-dot" id="dot-3">3</div>
+    <div class="progress-dot" id="dot-4">4</div>
+    <div class="progress-dot" id="dot-5">5</div>
+  </div>
+</header>
+
+<div id="instruction-box">
+  請點擊面積比較<span id="target-word">大</span>的圖形
+</div>
+
+<div id="game-container"></div>
+
+<!-- 彈窗區 -->
+<div id="stage-pass-modal">
+  <div class="modal-content">
+    <div class="star-icon">🌟</div>
+    <h2 style="font-size: 32px; color: #d946ef; margin: 12px 0; line-height: 1.4;">好叻啊，你答啱晒！<br>準備挑戰下一關</h2>
+    <button class="btn-next-stage" onclick="nextStage()">下一關 🚀</button>
+  </div>
+</div>
+
+<div id="stage-retry-modal">
+  <div class="modal-content">
+    <div class="star-icon">💪🏻</div>
+    <h2 style="font-size: 32px; color: #eab308; margin: 12px 0; line-height: 1.4;">加油，我們再試一次💪🏻</h2>
+    <button class="btn-retry-stage" onclick="retryCurrentStage()">重新開始 🔄</button>
+  </div>
+</div>
+
+<div id="reward-modal">
+  <div class="modal-content">
+    <div class="hand-icon">🙋‍♂️</div>
+    <h2 style="font-size: 36px; color: #d946ef; margin: 12px 0;">你完成了！舉手等候老師</h2>
+    <button class="btn-restart" onclick="restartGame()">重新開始 🔄</button>
+  </div>
+</div>
+
+<script>
+  const COLOR_LARGE = "#f472b6"; // 粉紅色代表「大」
+  const COLOR_SMALL = "#38bdf8"; // 天藍色代表「小」
+
+  // 基礎題型資料（只定義形狀大小，顏色和正確答案全部由程式自動算）
+  const stagesData = [
+    // Stage 1: 雙色二選一
+    [
+      { target: "大", shapes: [ { w: 260, h: 260, r: "18px" }, { w: 160, h: 160, r: "18px" } ] },
+      { target: "小", shapes: [ { w: 300, h: 130, r: "18px" }, { w: 330, h: 220, r: "18px" } ] },
+      { target: "小", shapes: [ { w: 200, h: 200, r: "50%"  }, { w: 290, h: 290, r: "50%"  } ] },
+      { target: "大", shapes: [ { w: 270, h: 270, r: "24px" }, { w: 340, h: 140, r: "24px" } ] },
+      { target: "小", shapes: [ { w: 260, h: 170, r: "18px" }, { w: 140, h: 140, r: "18px" } ] }
+    ],
+    // Stage 2: 同色二選一 (紫藍色 #818cf8)
+    [
+      { target: "大", shapes: [ { w: 280, h: 220, r: "20px" }, { w: 180, h: 180, r: "20px" } ] },
+      { target: "小", shapes: [ { w: 240, h: 240, r: "50%"  }, { w: 150, h: 150, r: "50%"  } ] },
+      { target: "大", shapes: [ { w: 160, h: 280, r: "16px" }, { w: 280, h: 280, r: "16px" } ] },
+      { target: "小", shapes: [ { w: 320, h: 160, r: "20px" }, { w: 350, h: 240, r: "20px" } ] },
+      { target: "大", shapes: [ { w: 250, h: 250, r: "50%"  }, { w: 170, h: 170, r: "50%"  } ] }
+    ],
+    // Stage 3: 同色三選一 (薄荷綠 #34d399)
+    [
+      { target: "大", shapes: [ { w: 150, h: 150, r: "18px" }, { w: 270, h: 270, r: "18px" }, { w: 200, h: 200, r: "18px" } ] },
+      { target: "小", shapes: [ { w: 260, h: 160, r: "50%"  }, { w: 200, h: 120, r: "50%"  }, { w: 290, h: 200, r: "50%"  } ] },
+      { target: "大", shapes: [ { w: 160, h: 260, r: "20px" }, { w: 220, h: 220, r: "20px" }, { w: 300, h: 250, r: "20px" } ] },
+      { target: "小", shapes: [ { w: 140, h: 140, r: "20px" }, { w: 210, h: 210, r: "20px" }, { w: 260, h: 260, r: "20px" } ] },
+      { target: "大", shapes: [ { w: 220, h: 220, r: "50%"  }, { w: 280, h: 280, r: "50%"  }, { w: 160, h: 160, r: "50%"  } ] }
+    ]
+  ];
+
+  let currentStageIdx = 0;
+  let currentQuestionIdx = 0;
+  let isChecking = false;
+  let hasWrongInStage = false;
+  let currentCorrectIdx = 0;
+
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+  function playSound(type) {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    if (type === 'fail') {
+      const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.frequency.setValueAtTime(220, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+      osc.start(); osc.stop(audioCtx.currentTime + 0.2);
+    } else if (type === 'success') {
+      const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.frequency.setValueAtTime(523.25, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(659.25, audioCtx.currentTime + 0.15);
+      gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+      osc.start(); osc.stop(audioCtx.currentTime + 0.2);
+    } else if (type === 'complete') {
+      [523, 659, 783, 1046].forEach((freq, idx) => {
+        const o = audioCtx.createOscillator(); const g = audioCtx.createGain();
+        o.connect(g); o.connect(audioCtx.destination); o.frequency.value = freq;
+        g.gain.setValueAtTime(0.2, audioCtx.currentTime + idx * 0.1);
+        o.start(audioCtx.currentTime + idx * 0.1); o.stop(audioCtx.currentTime + idx * 0.1 + 0.3);
+      });
+    }
+  }
+
+  function speak(text) {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const msg = new SpeechSynthesisUtterance(text);
+      msg.lang = 'zh-HK'; msg.rate = 0.85;
+      window.speechSynthesis.speak(msg);
+    }
+  }
+
+  function loadQuestion() {
+    isChecking = false;
+    const q = stagesData[currentStageIdx][currentQuestionIdx];
+    document.getElementById('stage-select').value = currentStageIdx;
+
+    const targetWordEl = document.getElementById('target-word');
+    targetWordEl.innerText = q.target;
+
+    // 設定文字提示顏色
+    if (q.target === "大") {
+      targetWordEl.className = "text-highlight-large";
+    } else {
+      targetWordEl.className = "text-highlight-small";
+    }
+
+    // 計算各個圖形面積，動態找到正解 index
+    const areas = q.shapes.map(s => s.w * s.h);
+    if (q.target === "大") {
+      const maxArea = Math.max(...areas);
+      currentCorrectIdx = areas.indexOf(maxArea);
+    } else {
+      const minArea = Math.min(...areas);
+      currentCorrectIdx = areas.indexOf(minArea);
+    }
+
+    // 更新進度點
+    for(let i=1; i<=5; i++) {
+      const dot = document.getElementById(`dot-${i}`);
+      if(dot) dot.classList.toggle('active', i <= currentQuestionIdx + 1);
+    }
+
+    // 動態分配顏色（Stage 1 自動依據大/小套用粉紅/粉藍，Stage 2 & 3 套用統一關卡色）
+    let shapesHtml = '';
+    const maxAreaInGroup = Math.max(...areas);
+
+    q.shapes.forEach((s, idx) => {
+      let fillColor = "";
+      if (currentStageIdx === 0) {
+        // Stage 1: 面積最大者填粉紅色(COLOR_LARGE)，較小者填粉藍色(COLOR_SMALL)
+        fillColor = (s.w * s.h === maxAreaInGroup) ? COLOR_LARGE : COLOR_SMALL;
+      } else if (currentStageIdx === 1) {
+        fillColor = "#818cf8"; // Stage 2 統一紫藍色
+      } else {
+        fillColor = "#34d399"; // Stage 3 統一薄荷綠
+      }
+
+      shapesHtml += `
+        <div class="visual-shape" onclick="checkChoice(${idx}, this)" style="
+          width: ${s.w}px;
+          height: ${s.h}px;
+          border-radius: ${s.r};
+          background-color: ${fillColor};
+        "></div>
+      `;
+    });
+
+    const container = document.getElementById('game-container');
+    container.innerHTML = `<div class="shapes-display-area">${shapesHtml}</div>`;
+
+    if(currentStageIdx === 0 && currentQuestionIdx === 0) {
+      speak(`請點擊面積比較${q.target}的圖形`);
+    }
+  }
+
+  function checkChoice(choiceIdx, el) {
+    if(isChecking) return;
+
+    if(choiceIdx === currentCorrectIdx) {
+      isChecking = true;
+      playSound('success');
+      
+      setTimeout(() => {
+        currentQuestionIdx++;
+
+        if (currentQuestionIdx >= 5) {
+          if (hasWrongInStage) {
+            playSound('fail');
+            document.getElementById('stage-retry-modal').style.display = 'flex';
+            speak("加油，我們再試一次");
+          } else {
+            playSound('complete');
+            document.getElementById('stage-pass-modal').style.display = 'flex';
+            speak("好叻啊，你答啱晒！準備挑戰下一關");
+          }
+        } else {
+          loadQuestion();
+        }
+      }, 400);
+    } else {
+      isChecking = true;
+      hasWrongInStage = true;
+      playSound('fail');
+      el.classList.add('wrong-answer');
+      speak("再看清楚一點比較看看！");
+      setTimeout(() => {
+        el.classList.remove('wrong-answer');
+        isChecking = false;
+      }, 650);
+    }
+  }
+
+  function nextStage() {
+    document.getElementById('stage-pass-modal').style.display = 'none';
+    currentQuestionIdx = 0;
+    currentStageIdx++;
+    hasWrongInStage = false;
+
+    if (currentStageIdx >= stagesData.length) {
+      document.getElementById('reward-modal').style.display = 'flex';
+      speak("你完成了！舉手等候老師");
+    } else {
+      loadQuestion();
+    }
+  }
+
+  function retryCurrentStage() {
+    document.getElementById('stage-retry-modal').style.display = 'none';
+    currentQuestionIdx = 0;
+    hasWrongInStage = false;
+    loadQuestion();
+  }
+
+  function onSelectStage(val) {
+    currentStageIdx = parseInt(val, 10);
+    currentQuestionIdx = 0;
+    hasWrongInStage = false;
+    loadQuestion();
+  }
+
+  function restartGame() {
+    document.getElementById('stage-pass-modal').style.display = 'none';
+    document.getElementById('stage-retry-modal').style.display = 'none';
+    document.getElementById('reward-modal').style.display = 'none';
+    currentStageIdx = 0;
+    currentQuestionIdx = 0;
+    hasWrongInStage = false;
+    loadQuestion();
+  }
+
+  window.onload = () => loadQuestion();
+</script>
+</body>
+</html>
