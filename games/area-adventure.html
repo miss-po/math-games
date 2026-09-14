@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>圖形面積大冒險</title>
+<style>
+  * { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
+  body {
+    width: 100vw; height: 100dvh; margin: 0; padding: 10px;
+    font-family: system-ui, -apple-system, 'Comic Sans MS', sans-serif;
+    background-color: #f0fdf4; display: flex; flex-direction: column; align-items: center; overflow: hidden;
+  }
+  .game-container { width: 100%; max-width: 650px; height: 100%; display: flex; flex-direction: column; gap: 8px; position: relative; }
+
+  .header {
+    display: flex; justify-content: space-between; align-items: center;
+    background: #ffffff; padding: 8px 12px; border-radius: 14px; border: 3px solid #bbf7d0;
+  }
+  .back-btn {
+    background: #ef4444; color: white; border: none; padding: 6px 12px; border-radius: 10px;
+    font-size: 14px; font-weight: bold; text-decoration: none; box-shadow: 0 3px 0 #b91c1c;
+  }
+  .stage-badge {
+    background: #dcfce7; color: #15803d; border: 2px solid #86efac; padding: 4px 10px;
+    border-radius: 12px; font-weight: bold; font-size: 14px;
+  }
+  
+  /* Progress Dots Header */
+  .progress-container { display: flex; align-items: center; gap: 4px; font-weight: bold; font-size: 13px; color: #166534; }
+  .progress-dot {
+    width: 22px; height: 22px; border-radius: 50%; background: #e2e8f0; border: 2px solid #cbd5e1;
+    display: flex; align-items: center; justify-content: center; font-size: 12px; color: #64748b; font-weight: bold;
+  }
+  .progress-dot.active { background: #bbf7d0; border-color: #22c55e; color: #15803d; }
+  .progress-dot.completed { background: #22c55e; border-color: #15803d; color: white; }
+
+  .canvas-card {
+    flex: 1; min-height: 120px; background: #ffffff; border: 3px solid #86efac;
+    border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 6px; position: relative;
+  }
+  canvas { max-width: 100%; max-height: 100%; object-fit: contain; }
+
+  .input-card {
+    background: #ffffff; border: 3px solid #86efac; border-radius: 16px; padding: 10px;
+    display: flex; flex-direction: column; gap: 8px; align-items: center;
+  }
+
+  .stacked-inputs { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 8px; }
+  .input-row { display: flex; flex-direction: column; gap: 4px; }
+  .input-label { font-size: 13px; font-weight: bold; color: #166534; }
+  
+  .display-field {
+    width: 100%; height: 40px; font-size: 20px; font-weight: bold;
+    text-align: center; border: 3px solid #cbd5e1; border-radius: 10px; background: #f8fafc;
+    display: flex; align-items: center; justify-content: center; color: #0f172a; position: relative;
+  }
+  .display-field.active { border-color: #22c55e; background: #ffffff; box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.2); }
+  .display-field.locked { border-color: #16a34a; background: #f0fdf4; color: #15803d; }
+  
+  .tick-mark { position: absolute; right: 10px; font-size: 20px; color: #16a34a; font-weight: bold; }
+
+  /* Keypad & MCQ Layouts */
+  .keypad { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; width: 100%; max-width: 360px; }
+  .key-btn {
+    height: 42px; font-size: 18px; font-weight: bold; color: #0f172a; background: #e2e8f0;
+    border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 3px 0 #cbd5e1;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .key-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #cbd5e1; }
+  .key-btn.action { background: #3b82f6; color: white; box-shadow: 0 3px 0 #1d4ed8; }
+  .key-btn.unit { background: #f59e0b; color: white; box-shadow: 0 3px 0 #b45309; }
+  .key-btn.submit { background: #22c55e; color: white; box-shadow: 0 3px 0 #15803d; grid-column: span 2; }
+
+  .mcq-container { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; max-width: 360px; }
+  .mcq-btn {
+    height: 50px; font-size: 20px; font-weight: bold; background: #dcfce7; color: #14532d;
+    border: 3px solid #4ade80; border-radius: 12px; cursor: pointer; box-shadow: 0 4px 0 #16a34a;
+  }
+  .mcq-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #16a34a; }
+
+  .feedback { font-size: 15px; font-weight: bold; min-height: 20px; text-align: center; }
+  .correct { color: #16a34a; }
+  .wrong { color: #dc2626; }
+  .hidden { display: none !important; }
+
+  /* Big Tick Success Overlay */
+  .big-tick-overlay {
+    position: absolute; inset: 0; background: rgba(255,255,255,0.85);
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    border-radius: 16px; z-index: 20; animation: fadeIn 0.2s ease;
+  }
+  .big-tick-icon {
+    font-size: 100px; color: #16a34a; line-height: 1;
+    animation: bouncePop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+  .big-tick-text { font-size: 24px; font-weight: bold; color: #15803d; margin-top: 10px; }
+  @keyframes bouncePop { 0% { transform: scale(0); } 70% { transform: scale(1.2); } 100% { transform: scale(1); } }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  /* Stage Victory Banner */
+  .modal-overlay {
+    position: absolute; inset: 0; background: rgba(0,0,0,0.6); display: flex;
+    justify-content: center; align-items: center; border-radius: 16px; z-index: 30;
+  }
+  .modal-content {
+    background: white; border-radius: 20px; padding: 24px; text-align: center;
+    border: 4px solid #22c55e; box-shadow: 0 10px 25px rgba(0,0,0,0.2); animation: bouncePop 0.4s ease;
+  }
+  .modal-title { font-size: 26px; color: #15803d; font-weight: bold; margin-bottom: 10px; }
+  .modal-btn {
+    margin-top: 14px; background: #22c55e; color: white; border: none; padding: 10px 24px;
+    font-size: 18px; font-weight: bold; border-radius: 12px; cursor: pointer; box-shadow: 0 4px 0 #15803d;
+  }
+</style>
+</head>
+<body>
+
+<div class="game-container">
+  <div class="header">
+    <a href="../index.html" class="back-btn">🏠 主選單</a>
+    <div class="stage-badge" id="stageBadge">模式 1</div>
+    <div class="progress-container">
+      <span>進度：</span>
+      <div class="progress-dot" id="dot-1">1</div>
+      <div class="progress-dot" id="dot-2">2</div>
+      <div class="progress-dot" id="dot-3">3</div>
+      <div class="progress-dot" id="dot-4">4</div>
+      <div class="progress-dot" id="dot-5">5</div>
+      <div class="progress-dot" id="dot-6">6</div>
+    </div>
+  </div>
+
+  <div class="canvas-card">
+    <canvas id="gridCanvas"></canvas>
+  </div>
+
+  <div class="input-card">
+    <div class="stacked-inputs" id="inputSection">
+      <div class="input-row">
+        <div class="input-label">步驟 1: 請輸入算式 (長 × 寬)</div>
+        <div class="display-field active" id="fieldEq">
+          <span id="textEq"></span>
+          <span class="tick-mark hidden" id="tickEq">✔</span>
+        </div>
+      </div>
+
+      <div class="input-row hidden" id="rowAns">
+        <div class="input-label">步驟 2: 請輸入面積與單位 (例如: 12 cm²)</div>
+        <div class="display-field active" id="fieldAns">
+          <span id="textAns"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="keypad" id="keypad">
+      <button class="key-btn" onclick="pressKey('7')">7</button>
+      <button class="key-btn" onclick="pressKey('8')">8</button>
+      <button class="key-btn" onclick="pressKey('9')">9</button>
+      <button class="key-btn action" onclick="pressKey(' × ')">×</button>
+      
+      <button class="key-btn" onclick="pressKey('4')">4</button>
+      <button class="key-btn" onclick="pressKey('5')">5</button>
+      <button class="key-btn" onclick="pressKey('6')">6</button>
+      <button class="key-btn unit" onclick="pressKey(' cm²')">cm²</button>
+      
+      <button class="key-btn" onclick="pressKey('1')">1</button>
+      <button class="key-btn" onclick="pressKey('2')">2</button>
+      <button class="key-btn" onclick="pressKey('3')">3</button>
+      <button class="key-btn unit" onclick="pressKey(' m²')">m²</button>
+      
+      <button class="key-btn" onclick="pressKey('0')">0</button>
+      <button class="key-btn action" onclick="pressDelete()">⌫ 刪除</button>
+      <button class="key-btn submit" onclick="submitStep()">確認送出</button>
+    </div>
+
+    <div class="mcq-container hidden" id="mcqContainer"></div>
+    <div class="feedback" id="feedback"></div>
+  </div>
+
+  <!-- Big Tick Overlay -->
+  <div class="big-tick-overlay hidden" id="bigTickOverlay">
+    <div class="big-tick-icon">✔</div>
+    <div class="big-tick-text" id="bigTickText">答對了！</div>
+  </div>
+
+  <!-- Stage Victory Banner -->
+  <div class="modal-overlay hidden" id="levelModal">
+    <div class="modal-content">
+      <div class="modal-title" id="modalTitle">🎉 恭喜晉級！</div>
+      <p id="modalDesc" style="font-size:18px; font-weight:bold; color:#475569;">你已成功通過此模式！</p>
+      <button class="modal-btn" onclick="closeModal()">進入下一模式 🚀</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Web Audio API Sound Generator
+  const AudioContext = window.AudioContext || window.webkitAudioContext;
+  let audioCtx = null;
+
+  function initAudio() {
+    if (!audioCtx) audioCtx = new AudioContext();
+  }
+
+  function playSound(type) {
+    initAudio();
+    if (!audioCtx) return;
+
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    const now = audioCtx.currentTime;
+
+    if (type === 'correct') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(523.25, now);
+      osc.frequency.setValueAtTime(659.25, now + 0.1);
+      osc.frequency.setValueAtTime(783.99, now + 0.2);
+      gain.gain.setValueAtTime(0.3, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+      osc.start(now); osc.stop(now + 0.4);
+    } else if (type === 'wrong') {
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(180, now);
+      osc.frequency.setValueAtTime(140, now + 0.15);
+      gain.gain.setValueAtTime(0.3, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+      osc.start(now); osc.stop(now + 0.3);
+    } else if (type === 'levelup') {
+      osc.type = 'triangle';
+      const notes = [440, 554.37, 659.25, 880];
+      notes.forEach((freq, i) => {
+        osc.frequency.setValueAtTime(freq, now + i * 0.1);
+      });
+      gain.gain.setValueAtTime(0.4, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+      osc.start(now); osc.stop(now + 0.6);
+    }
+  }
+
+  let mode = 1;
+  let currentQIndex = 1; // 1 to 6
+  let currentStep = 1;
+  let valEq = '';
+  let valAns = '';
+  let currentQ = {};
+
+  const canvas = document.getElementById('gridCanvas');
+  const ctx = canvas.getContext('2d');
+
+  function updateDots() {
+    for (let i = 1; i <= 6; i++) {
+      const dot = document.getElementById(`dot-${i}`);
+      dot.className = 'progress-dot';
+      if (i < currentQIndex) dot.classList.add('completed');
+      else if (i === currentQIndex) dot.classList.add('active');
+    }
+  }
+
+  function initQuestion() {
+    currentStep = 1;
+    valEq = ''; valAns = '';
+    updateDots();
+
+    document.getElementById('tickEq').classList.add('hidden');
+    document.getElementById('fieldEq').className = 'display-field active';
+    document.getElementById('rowAns').classList.add('hidden');
+    document.getElementById('fieldAns').className = 'display-field active';
+    document.getElementById('feedback').innerText = '';
+
+    const modeNames = { 1: '模式 1: 有圖提示 (選擇答案)', 2: '模式 2: 有圖提示 (輸入算式與答案)' };
+    document.getElementById('stageBadge').innerText = modeNames[mode];
+
+    let unit = Math.random() > 0.5 ? 'cm' : 'm';
+    let w = Math.floor(Math.random() * 5) + 2;
+    let h = Math.floor(Math.random() * 5) + 2;
+
+    currentQ = {
+      w: w, h: h, unit: unit,
+      totalArea: w * h,
+      validEqs: [`${w}x${h}`, `${h}x${w}`],
+      validAns: `${w * h}${unit}²`
+    };
+
+    const keypad = document.getElementById('keypad');
+    const mcq = document.getElementById('mcqContainer');
+    const inputSection = document.getElementById('inputSection');
+
+    if (mode === 1) {
+      inputSection.classList.add('hidden');
+      keypad.classList.add('hidden');
+      mcq.classList.remove('hidden');
+      renderMCQOptions();
+    } else {
+      inputSection.classList.remove('hidden');
+      keypad.classList.remove('hidden');
+      mcq.classList.add('hidden');
+    }
+
+    updateDisplayFields();
+    drawShape();
+  }
+
+  function drawShape() {
+    const parent = canvas.parentElement;
+    canvas.width = parent.clientWidth - 10;
+    canvas.height = parent.clientHeight - 10;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const padding = 35;
+    const scale = Math.min((canvas.width - padding * 2) / currentQ.w, (canvas.height - padding * 2) / currentQ.h);
+    const rectW = currentQ.w * scale;
+    const rectH = currentQ.h * scale;
+    const startX = (canvas.width - rectW) / 2;
+    const startY = (canvas.height - rectH) / 2;
+
+    ctx.fillStyle = '#e0f2fe';
+    ctx.fillRect(startX, startY, rectW, rectH);
+
+    ctx.strokeStyle = '#93c5fd'; ctx.lineWidth = 1.5;
+    for (let i = 0; i <= currentQ.w; i++) {
+      ctx.beginPath(); ctx.moveTo(startX + i * scale, startY); ctx.lineTo(startX + i * scale, startY + rectH); ctx.stroke();
+    }
+    for (let j = 0; j <= currentQ.h; j++) {
+      ctx.beginPath(); ctx.moveTo(startX, startY + j * scale); ctx.lineTo(startX + rectW, startY + j * scale); ctx.stroke();
+    }
+
+    ctx.strokeStyle = '#0284c7'; ctx.lineWidth = 3;
+    ctx.strokeRect(startX, startY, rectW, rectH);
+
+    ctx.fillStyle = '#0f172a'; ctx.font = 'bold 16px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(`${currentQ.w} ${currentQ.unit}`, startX + rectW / 2, startY - 14);
+    ctx.fillText(`${currentQ.h} ${currentQ.unit}`, startX + rectW + 20, startY + rectH / 2);
+  }
+
+  function renderMCQOptions() {
+    const mcq = document.getElementById('mcqContainer');
+    mcq.innerHTML = '';
+    const correctVal = `${currentQ.totalArea} ${currentQ.unit}²`;
+    let opts = new Set([correctVal]);
+
+    while (opts.size < 4) {
+      let r = currentQ.totalArea + (Math.floor(Math.random() * 9) - 4);
+      if (r > 0 && r !== currentQ.totalArea) opts.add(`${r} ${currentQ.unit}²`);
+    }
+    let optArray = Array.from(opts).sort(() => Math.random() - 0.5);
+
+    optArray.forEach(opt => {
+      const btn = document.createElement('button');
+      btn.className = 'mcq-btn';
+      btn.innerText = opt;
+      btn.onclick = () => checkMCQ(opt);
+      mcq.appendChild(btn);
+    });
+  }
+
+  function checkMCQ(selected) {
+    const correctVal = `${currentQ.totalArea} ${currentQ.unit}²`;
+    if (selected === correctVal) {
+      showBigTickAndNext();
+    } else {
+      playSound('wrong');
+      document.getElementById('feedback').className = 'feedback wrong';
+      document.getElementById('feedback').innerText = '❌ 答案不對，再計算一下！';
+    }
+  }
+
+  function pressKey(val) {
+    if (currentStep === 1) valEq += val;
+    else valAns += val;
+    updateDisplayFields();
+  }
+
+  function pressDelete() {
+    if (currentStep === 1) valEq = valEq.trimEnd().slice(0, -1);
+    else valAns = valAns.trimEnd().slice(0, -1);
+    updateDisplayFields();
+  }
+
+  function updateDisplayFields() {
+    document.getElementById('textEq').innerText = valEq;
+    document.getElementById('textAns').innerText = valAns;
+  }
+
+  function submitStep() {
+    if (currentStep === 1) {
+      const cleaned = valEq.toLowerCase().replace(/\s+/g, '').replace(/×/g, 'x');
+      if (currentQ.validEqs.includes(cleaned)) {
+        playSound('correct');
+        currentStep = 2;
+        document.getElementById('tickEq').classList.remove('hidden');
+        document.getElementById('fieldEq').className = 'display-field locked';
+        document.getElementById('rowAns').classList.remove('hidden');
+        document.getElementById('feedback').className = 'feedback correct';
+        document.getElementById('feedback').innerText = '🎉 算式正確！請在下方框框填寫面積與單位。';
+      } else {
+        playSound('wrong');
+        document.getElementById('feedback').className = 'feedback wrong';
+        document.getElementById('feedback').innerText = '❌ 算式不正確，再試試看！';
+      }
+    } else if (currentStep === 2) {
+      const cleaned = valAns.toLowerCase().replace(/\s+/g, '').replace(/×/g, 'x');
+      if (cleaned === currentQ.validAns) {
+        showBigTickAndNext();
+      } else {
+        playSound('wrong');
+        document.getElementById('feedback').className = 'feedback wrong';
+        document.getElementById('feedback').innerText = `❌ 答案或單位錯誤！記得要加上 ${currentQ.unit}² 哦！`;
+      }
+    }
+  }
+
+  function showBigTickAndNext() {
+    playSound('correct');
+    const overlay = document.getElementById('bigTickOverlay');
+    overlay.classList.remove('hidden');
+
+    setTimeout(() => {
+      overlay.classList.add('hidden');
+      currentQIndex++;
+      if (currentQIndex > 6) {
+        currentQIndex = 1;
+        if (mode < 2) {
+          mode++;
+          triggerLevelUp();
+        } else {
+          mode = 1;
+          triggerLevelUp('🏆 太厲害了！你已通關圖形面積大冒險！');
+        }
+      } else {
+        initQuestion();
+      }
+    }, 1200);
+  }
+
+  function triggerLevelUp(customText) {
+    playSound('levelup');
+    document.getElementById('modalTitle').innerText = customText ? customText : `🎉 恭喜晉級到 模式 2！`;
+    document.getElementById('modalDesc').innerText = customText ? '你已經掌握了圖形面積計算的終極技巧！' : '模式 2 挑戰：寫出完整長×寬算式與正確面積單位！';
+    document.getElementById('levelModal').classList.remove('hidden');
+  }
+
+  function closeModal() {
+    document.getElementById('levelModal').classList.add('hidden');
+    initQuestion();
+  }
+
+  window.addEventListener('resize', drawShape);
+  initQuestion();
+</script>
+</body>
+</html>
