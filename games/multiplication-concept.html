@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>乘法等組大冒險</title>
+<style>
+  * { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
+  html, body {
+    width: 100vw; height: 100dvh; margin: 0; padding: 4px;
+    font-family: system-ui, -apple-system, sans-serif;
+    background-color: #fefce8; display: flex; flex-direction: column; align-items: center; overflow: hidden;
+  }
+  .game-container {
+    width: 100%; max-width: 650px; height: 100%; max-height: 100dvh;
+    display: flex; flex-direction: column; gap: 3px; position: relative; overflow: hidden;
+  }
+
+  /* Header Controls */
+  .header {
+    flex: 0 0 auto; display: flex; justify-content: space-between; align-items: center; gap: 4px;
+    background: #ffffff; padding: 4px 8px; border-radius: 12px; border: 2px solid #fde047; flex-wrap: wrap;
+  }
+  .back-btn {
+    background: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 8px;
+    font-size: 12px; font-weight: bold; text-decoration: none; box-shadow: 0 2px 0 #b91c1c; white-space: nowrap;
+  }
+  .level-select {
+    background: #d97706; color: white; border: none; padding: 4px 8px; border-radius: 8px;
+    font-weight: bold; font-size: 13px; cursor: pointer; outline: none; box-shadow: 0 2px 0 #b45309;
+  }
+
+  /* Progress Dots */
+  .progress-container { display: flex; align-items: center; gap: 4px; }
+  .progress-dot {
+    width: 20px; height: 20px; border-radius: 50%; background: #e2e8f0; border: 2px solid #cbd5e1;
+    display: flex; align-items: center; justify-content: center; font-size: 11px; color: #64748b; font-weight: bold;
+  }
+  .progress-dot.active { background: #fef08a; border-color: #ca8a04; color: #854d0e; }
+  .progress-dot.completed { background: #22c55e; border-color: #15803d; color: white; }
+
+  .instruction { flex: 0 0 auto; font-size: 17px; font-weight: bold; color: #854d0e; text-align: center; margin: 1px 0; }
+
+  /* Main Stage for Boxes Display */
+  .boxes-card {
+    flex: 1 1 auto; min-height: 0; width: 100%; background: #ffffff; border: 2px solid #fde047;
+    border-radius: 12px; padding: 4px; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; overflow: hidden; position: relative;
+  }
+
+  .boxes-grid {
+    display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px;
+    width: 100%; flex: 1; overflow-y: auto; padding: 2px;
+  }
+  .item-box {
+    background: #fef08a; border: 3px solid #eab308; border-radius: 10px;
+    padding: 4px 8px; display: flex; justify-content: center; align-items: center;
+    box-shadow: 0 2px 0 #ca8a04; animation: popIn 0.3s ease;
+  }
+  @keyframes popIn { 0% { transform: scale(0.5); opacity: 0; } 100% { transform: scale(1); } }
+  
+  .box-items { display: flex; flex-wrap: wrap; gap: 2px; max-width: 130px; justify-content: center; font-size: 24px; }
+
+  /* Level 3 Large Question Banner */
+  .level3-banner {
+    font-size: 34px; font-weight: bold; color: #92400e; background: #fef08a;
+    border: 3px solid #facc15; border-radius: 16px; padding: 12px 28px;
+    box-shadow: 0 4px 12px rgba(217, 119, 6, 0.15); text-align: center; margin: auto;
+  }
+
+  .add-box-btn {
+    background: #eab308; color: #713f12; border: none; padding: 5px 14px; font-size: 14px; font-weight: bold;
+    border-radius: 10px; cursor: pointer; box-shadow: 0 2px 0 #ca8a04; margin: 2px 0;
+  }
+  .add-box-btn:active { transform: translateY(1px); box-shadow: none; }
+
+  /* Input Section */
+  .input-card {
+    flex: 0 0 auto; width: 100%; background: #ffffff; border: 2px solid #fde047; border-radius: 12px; padding: 4px;
+    display: flex; flex-direction: column; gap: 4px; align-items: center;
+  }
+
+  /* Fixed CSS Grid Layout for Horizontal Equal Sign Alignment */
+  .equation-bar {
+    display: grid; grid-template-columns: 1fr 24px 40px 28px; align-items: center; justify-items: center;
+    width: 100%; max-width: 480px; background: #fef9c3; padding: 4px 8px;
+    border-radius: 10px; border: 2px solid #facc15; gap: 4px;
+  }
+  .eq-lhs { display: flex; align-items: center; justify-content: flex-end; gap: 4px; width: 100%; overflow-x: auto; }
+  .eq-rhs { display: flex; align-items: center; justify-content: center; width: 40px; }
+  .eq-op { font-size: 20px; font-weight: bold; color: #854d0e; width: 24px; text-align: center; }
+  .row-tick { font-size: 20px; font-weight: bold; color: #16a34a; width: 28px; text-align: center; }
+
+  /* Level 2 & 3 Vertical Long Multiplication Board */
+  .v-mult-board {
+    display: flex; flex-direction: column; align-items: flex-end; width: 170px;
+    background: #fef9c3; padding: 6px 12px; border-radius: 12px; border: 3px solid #eab308;
+    box-shadow: 0 3px 8px rgba(234, 179, 8, 0.2); animation: popIn 0.3s ease; margin: 2px 0;
+  }
+  .v-place-header {
+    display: grid; grid-template-columns: 24px 40px 40px; gap: 6px; width: 100%;
+    text-align: center; font-size: 11px; font-weight: bold; color: #b45309; margin-bottom: 2px;
+  }
+  .v-m-row {
+    display: grid; grid-template-columns: 24px 40px 40px; gap: 6px; align-items: center; justify-items: center; width: 100%;
+  }
+  .v-m-op { font-size: 20px; font-weight: bold; color: #854d0e; text-align: center; }
+  .v-m-line { width: 100%; height: 3px; background: #ca8a04; margin: 2px 0; border-radius: 2px; }
+
+  /* Clear & Distinct Box States */
+  .eq-box {
+    width: 40px; height: 36px; font-size: 18px; font-weight: bold; text-align: center;
+    border-radius: 8px; background: #ffffff; border: 2px solid #94a3b8;
+    display: flex; align-items: center; justify-content: center; color: #1e293b; cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .eq-box.active {
+    border: 3px solid #d97706 !important; background: #fef08a !important; color: #78350f !important;
+    box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.4) !important; transform: scale(1.05); z-index: 2;
+  }
+  .eq-box.locked {
+    border: 2px solid #16a34a !important; background: #dcfce7 !important; color: #15803d !important;
+    font-weight: bold; pointer-events: none; box-shadow: none !important; transform: none !important;
+  }
+  .eq-box.disabled {
+    background: #f1f5f9 !important; border: 2px solid #cbd5e1 !important; color: #94a3b8 !important;
+    cursor: not-allowed; pointer-events: none; box-shadow: none !important;
+  }
+  .eq-box.hidden-box { visibility: hidden !important; pointer-events: none !important; }
+  .eq-box.op-box { background: #fffbe8; border: 2px solid #facc15; color: #b45309; width: 34px; }
+
+  /* 4-Column Dynamic Keypad */
+  .num-keypad { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; width: 100%; max-width: 320px; }
+  .key-btn {
+    height: 33px; font-size: 16px; font-weight: bold; color: #0f172a; background: #f1f5f9;
+    border: 1px solid #cbd5e1; border-radius: 8px; cursor: pointer; box-shadow: 0 2px 0 #cbd5e1;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .key-btn:active { transform: translateY(1px); box-shadow: none; }
+  .key-btn.op-key { background: #fef08a; color: #854d0e; border-color: #facc15; font-size: 18px; }
+  .key-btn.del { background: #fee2e2; color: #991b1b; border-color: #fca5a5; font-size: 14px; }
+  .key-btn.submit { background: #22c55e; color: white; border-color: #16a34a; box-shadow: 0 2px 0 #15803d; grid-column: span 3; font-size: 14px; }
+
+  .feedback { font-size: 12px; font-weight: bold; min-height: 15px; text-align: center; }
+  .correct { color: #16a34a; }
+  .wrong { color: #dc2626; }
+  .hidden { display: none !important; }
+
+  /* Modals */
+  .overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 40; }
+  .modal-box {
+    background: white; border: 4px solid #eab308; border-radius: 18px;
+    padding: 20px; text-align: center; max-width: 92%; width: 400px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2); animation: popIn 0.25s ease;
+  }
+  .modal-btn { background: #d97706; color: white; border: none; padding: 10px 20px; font-size: 16px; font-weight: bold; border-radius: 12px; cursor: pointer; }
+  .modal-btn-secondary { background: #64748b; color: white; border: none; padding: 10px 20px; font-size: 16px; font-weight: bold; border-radius: 12px; cursor: pointer; text-decoration: none; }
+
+  .tick-overlay { position: absolute; inset: 0; background: rgba(255,255,255,0.92); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 30; }
+  .tick-icon { font-size: 70px; color: #16a34a; line-height: 1; animation: bouncePop 0.4s ease; }
+  @keyframes bouncePop { 0% { transform: scale(0); } 70% { transform: scale(1.2); } 100% { transform: scale(1); } }
+</style>
+</head>
+<body>
+
+<div class="game-container">
+  <div class="header">
+    <a href="../index.html" class="back-btn">🏠 主頁</a>
+    
+    <select id="levelSelect" class="level-select" onchange="changeLevel(this.value)">
+      <option value="1">✖️ Level 1：橫式概念 (圖示)</option>
+      <option value="2">✖️ Level 2：直式計算 (圖示)</option>
+      <option value="3">✖️ Level 3：直式心算 (純算式)</option>
+    </select>
+    
+    <div class="progress-container">
+      <div class="progress-dot" id="dot-1">1</div>
+      <div class="progress-dot" id="dot-2">2</div>
+      <div class="progress-dot" id="dot-3">3</div>
+      <div class="progress-dot" id="dot-4">4</div>
+      <div class="progress-dot" id="dot-5">5</div>
+    </div>
+  </div>
+
+  <div class="instruction" id="instruction">點擊按鈕擺放物品</div>
+
+  <div class="boxes-card" id="boxesCard">
+    <div class="boxes-grid" id="boxesGrid"></div>
+    <div class="level3-banner hidden" id="level3Display"></div>
+    <button class="add-box-btn" id="addBoxBtn" onclick="addBox()">➕ 擺放 1 盒</button>
+  </div>
+
+  <div class="input-card hidden" id="inputArea">
+    <!-- Step 1: Dynamic Repeated Addition Equation Line (Level 1) -->
+    <div class="equation-bar" id="addEqBar">
+      <div class="eq-lhs" id="addLhs"></div>
+      <span class="eq-op">=</span>
+      <div class="eq-rhs">
+        <div class="eq-box disabled" id="addAnsBox" onclick="focusAddSlot('ans')">🔒</div>
+      </div>
+      <span class="row-tick hidden" id="addRowTick">✔</span>
+    </div>
+
+    <!-- Step 2: Multiplication Equation Line (Level 1) -->
+    <div class="equation-bar hidden" id="multEqBar">
+      <div class="eq-lhs">
+        <div class="eq-box active" id="multBox1" onclick="focusMultBox(1)">?</div>
+        <div class="eq-box op-box" id="multBoxOp" onclick="focusMultBox('op')">?</div>
+        <div class="eq-box" id="multBox2" onclick="focusMultBox(2)">?</div>
+      </div>
+      <span class="eq-op">=</span>
+      <div class="eq-rhs">
+        <div class="eq-box disabled" id="multBox3" onclick="focusMultBox(3)">🔒</div>
+      </div>
+      <span class="row-tick hidden" id="multRowTick">✔</span>
+    </div>
+
+    <!-- Level 2 & Level 3: Vertical Long Multiplication Board -->
+    <div class="v-mult-board hidden" id="vMultBoard">
+      <div class="v-place-header">
+        <span></span><span>十</span><span>個</span>
+      </div>
+      <div class="v-m-row">
+        <span></span>
+        <div class="eq-box hidden-box"></div>
+        <div class="eq-box active" id="vmBox1" onclick="focusVMBox(1)">?</div>
+      </div>
+      <div class="v-m-row">
+        <span class="v-m-op">×</span>
+        <div class="eq-box hidden-box"></div>
+        <div class="eq-box" id="vmBox2" onclick="focusVMBox(2)">?</div>
+      </div>
+      <div class="v-m-line"></div>
+      <div class="v-m-row">
+        <span></span>
+        <div class="eq-box disabled" id="vmBoxTens" onclick="focusVMBox('tens')">🔒</div>
+        <div class="eq-box disabled" id="vmBoxOnes" onclick="focusVMBox('ones')">🔒</div>
+      </div>
+    </div>
+
+    <!-- Keypad -->
+    <div class="num-keypad">
+      <button class="key-btn" onclick="pressKey('7')">7</button>
+      <button class="key-btn" onclick="pressKey('8')">8</button>
+      <button class="key-btn" onclick="pressKey('9')">9</button>
+      <button class="key-btn op-key" id="opBtn1" onclick="pressKey('+')">+</button>
+      
+      <button class="key-btn" onclick="pressKey('4')">4</button>
+      <button class="key-btn" onclick="pressKey('5')">5</button>
+      <button class="key-btn" onclick="pressKey('6')">6</button>
+      <button class="key-btn op-key" id="opBtn2" onclick="pressKey('-')">-</button>
+      
+      <button class="key-btn" onclick="pressKey('1')">1</button>
+      <button class="key-btn" onclick="pressKey('2')">2</button>
+      <button class="key-btn" onclick="pressKey('3')">3</button>
+      <button class="key-btn del" onclick="pressDel()">⌫ 刪除</button>
+      
+      <button class="key-btn" onclick="pressKey('0')">0</button>
+      <button class="key-btn submit" onclick="submitStep()">確認送出</button>
+    </div>
+
+    <div class="feedback" id="feedback"></div>
+  </div>
+
+  <div class="tick-overlay hidden" id="successOverlay">
+    <div class="tick-icon">✔</div>
+    <div style="font-size:20px; font-weight:bold; color:#15803d; margin-top:6px;" id="successText">答對了！</div>
+  </div>
+
+  <!-- Level Completion Medal / Trophy Modal -->
+  <div class="overlay hidden" id="levelNextModal">
+    <div class="modal-box">
+      <div style="font-size: 65px;">🏆✨</div>
+      <div style="font-size: 22px; font-weight: bold; color: #d97706; margin: 8px 0;" id="modalTitle">恭喜完成！</div>
+      <div style="font-size: 15px; color: #334155; margin-bottom: 18px;" id="modalDesc">太棒了！你已成功答對全部 5 條題目！</div>
+      <div style="display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
+        <a href="../index.html" class="modal-btn-secondary">🏠 返回選單</a>
+        <button class="modal-btn" id="nextLevelBtn">前往下一關 ➔</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  let audio = null;
+  function playSound(type) {
+    if (!audio) audio = new AudioCtx();
+    const osc = audio.createOscillator(), g = audio.createGain();
+    osc.connect(g); g.connect(audio.destination);
+    const now = audio.currentTime;
+    if (type === 'pop') {
+      osc.frequency.setValueAtTime(450, now); osc.frequency.exponentialRampToValueAtTime(850, now + 0.08);
+      g.gain.setValueAtTime(0.2, now); osc.start(now); osc.stop(now + 0.08);
+    } else if (type === 'wrong') {
+      osc.type = 'sawtooth'; osc.frequency.setValueAtTime(200, now); osc.frequency.setValueAtTime(150, now + 0.15);
+      g.gain.setValueAtTime(0.3, now); osc.start(now); osc.stop(now + 0.25);
+    } else if (type === 'win') {
+      [523, 659, 783].forEach((f, i) => osc.frequency.setValueAtTime(f, now + i * 0.1));
+      g.gain.setValueAtTime(0.3, now); osc.start(now); osc.stop(now + 0.4);
+    }
+  }
+
+  let gameLevel = 1;
+  let qIndex = 0;
+  let currentQ = {};
+  let placedBoxes = 0;
+  
+  let currentPhase = 1;
+  let activeAddSlot = 0;
+  let valAddSlots = [];
+  let valAddAns = '';
+  let activeMultIndex = 1;
+  let valMult1 = '', valMultOp = '', valMult2 = '', valMult3 = '';
+
+  let vPhase = 1;
+  let activeVMIndex = 1;
+  let valVM1 = '', valVM2 = '', valVMTens = '', valVMOnes = '';
+
+  function changeLevel(lv) {
+    gameLevel = parseInt(lv);
+    qIndex = 0;
+    initQuestion();
+  }
+
+  function generateQuestion(idx) {
+    const items = ['🥮', '🧃', '🧁', '🍎', '🍩', '🍪', '🍓', '🥑'];
+    const icon = items[Math.floor(Math.random() * items.length)];
+    let perBox, targetBoxes;
+
+    if (idx === 0) { perBox = Math.floor(Math.random() * 2) + 2; targetBoxes = Math.floor(Math.random() * 2) + 2; }
+    else if (idx === 1) { perBox = Math.floor(Math.random() * 2) + 4; targetBoxes = Math.floor(Math.random() * 2) + 2; }
+    else if (idx === 2) { perBox = Math.floor(Math.random() * 2) + 5; targetBoxes = Math.floor(Math.random() * 2) + 3; }
+    else if (idx === 3) { perBox = Math.floor(Math.random() * 2) + 6; targetBoxes = Math.floor(Math.random() * 2) + 4; }
+    else { perBox = Math.floor(Math.random() * 2) + 7; targetBoxes = Math.floor(Math.random() * 2) + 5; }
+
+    return { perBox: perBox, targetBoxes: targetBoxes, icon: icon };
+  }
+
+  function updateDots() {
+    for (let i = 1; i <= 5; i++) {
+      const dot = document.getElementById(`dot-${i}`);
+      dot.className = 'progress-dot';
+      if (i - 1 < qIndex) dot.classList.add('completed');
+      else if (i - 1 === qIndex) dot.classList.add('active');
+    }
+  }
+
+  function updateKeypadOperators() {
+    const btn1 = document.getElementById('opBtn1');
+    const btn2 = document.getElementById('opBtn2');
+
+    if (gameLevel === 1 && currentPhase <= 2) {
+      btn1.innerText = '+'; btn1.setAttribute('onclick', "pressKey('+')");
+      btn2.innerText = '-'; btn2.setAttribute('onclick', "pressKey('-')");
+    } else {
+      btn1.innerText = '×'; btn1.setAttribute('onclick', "pressKey('×')");
+      btn2.innerText = '÷'; btn2.setAttribute('onclick', "pressKey('÷')");
+    }
+  }
+
+  function initQuestion() {
+    document.getElementById('levelSelect').value = gameLevel;
+    document.getElementById('inputArea').classList.add('hidden');
+    document.getElementById('multEqBar').classList.add('hidden');
+    document.getElementById('vMultBoard').classList.add('hidden');
+    document.getElementById('addRowTick').classList.add('hidden');
+    document.getElementById('multRowTick').classList.add('hidden');
+    document.getElementById('successOverlay').classList.add('hidden');
+    document.getElementById('levelNextModal').classList.add('hidden');
+    document.getElementById('feedback').innerText = '';
+
+    updateDots();
+    currentQ = generateQuestion(qIndex);
+    placedBoxes = 0;
+
+    if (gameLevel === 1) {
+      document.getElementById('boxesGrid').classList.remove('hidden');
+      document.getElementById('level3Display').classList.add('hidden');
+      document.getElementById('instruction').innerText = `點擊按鈕擺放物品`;
+      document.getElementById('addBoxBtn').classList.remove('hidden');
+      document.getElementById('addBoxBtn').innerText = `➕ 擺放第 1 盒`;
+      document.getElementById('boxesGrid').innerHTML = '';
+      document.getElementById('addEqBar').classList.remove('hidden');
+
+      currentPhase = 1; activeAddSlot = 0; valAddAns = '';
+      activeMultIndex = 1; valMult1 = ''; valMultOp = ''; valMult2 = ''; valMult3 = '';
+
+      updateKeypadOperators();
+      buildAdditionBarUI();
+      resetMultBarUI();
+    } else if (gameLevel === 2) {
+      document.getElementById('boxesGrid').classList.remove('hidden');
+      document.getElementById('level3Display').classList.add('hidden');
+      document.getElementById('instruction').innerText = `用直式計算：每盒有 ${currentQ.perBox} 個，共 ${currentQ.targetBoxes} 盒`;
+      document.getElementById('addBoxBtn').classList.add('hidden');
+      document.getElementById('addEqBar').classList.add('hidden');
+      document.getElementById('vMultBoard').classList.remove('hidden');
+      document.getElementById('inputArea').classList.remove('hidden');
+
+      const grid = document.getElementById('boxesGrid');
+      grid.innerHTML = '';
+      for (let b = 0; b < currentQ.targetBoxes; b++) {
+        const boxDiv = document.createElement('div');
+        boxDiv.className = 'item-box';
+        let itemsHTML = '';
+        for (let i = 0; i < currentQ.perBox; i++) itemsHTML += currentQ.icon;
+        boxDiv.innerHTML = `<div class="box-items">${itemsHTML}</div>`;
+        grid.appendChild(boxDiv);
+      }
+
+      vPhase = 1; activeVMIndex = 1;
+      valVM1 = ''; valVM2 = ''; valVMTens = ''; valVMOnes = '';
+      resetVMBarUI();
+      updateKeypadOperators();
+
+      document.getElementById('feedback').className = 'feedback correct';
+      document.getElementById('feedback').innerText = '🎉 第一步：請輸入直式被乘數與乘數：';
+    } else {
+      // Level 3: Pure Calculation (Large Text Display)
+      document.getElementById('boxesGrid').classList.add('hidden');
+      document.getElementById('addBoxBtn').classList.add('hidden');
+      document.getElementById('level3Display').classList.remove('hidden');
+      document.getElementById('level3Display').innerText = `${currentQ.perBox} × ${currentQ.targetBoxes} = ?`;
+
+      document.getElementById('instruction').innerText = `請用直式計算乘法`;
+      document.getElementById('addEqBar').classList.add('hidden');
+      document.getElementById('vMultBoard').classList.remove('hidden');
+      document.getElementById('inputArea').classList.remove('hidden');
+
+      vPhase = 1; activeVMIndex = 1;
+      valVM1 = ''; valVM2 = ''; valVMTens = ''; valVMOnes = '';
+      resetVMBarUI();
+      updateKeypadOperators();
+
+      document.getElementById('feedback').className = 'feedback correct';
+      document.getElementById('feedback').innerText = '🎉 第一步：請填寫直式被乘數與乘數：';
+    }
+  }
+
+  function buildAdditionBarUI() {
+    const lhs = document.getElementById('addLhs');
+    lhs.innerHTML = '';
+
+    const totalSlots = currentQ.targetBoxes * 2 - 1;
+    valAddSlots = new Array(totalSlots).fill('');
+
+    for (let i = 0; i < totalSlots; i++) {
+      const isOp = (i % 2 === 1);
+      const box = document.createElement('div');
+      box.className = isOp ? 'eq-box op-box' : 'eq-box';
+      if (i === 0) box.classList.add('active');
+      box.id = `addSlot_${i}`;
+      box.innerText = '?';
+      box.onclick = () => focusAddSlot(i);
+      lhs.appendChild(box);
+    }
+
+    const ansBox = document.getElementById('addAnsBox');
+    ansBox.className = 'eq-box disabled';
+    ansBox.innerText = '🔒';
+  }
+
+  function resetMultBarUI() {
+    const b1 = document.getElementById('multBox1');
+    const bOp = document.getElementById('multBoxOp');
+    const b2 = document.getElementById('multBox2');
+    const b3 = document.getElementById('multBox3');
+
+    b1.className = 'eq-box active'; b1.innerText = '?';
+    bOp.className = 'eq-box op-box'; bOp.innerText = '?';
+    b2.className = 'eq-box'; b2.innerText = '?';
+    b3.className = 'eq-box disabled'; b3.innerText = '🔒';
+  }
+
+  function resetVMBarUI() {
+    updateVMBoxesStyle();
+  }
+
+  function focusAddSlot(i) {
+    if (currentPhase === 1 && typeof i === 'number') { activeAddSlot = i; updateAddSlotsStyle(); }
+    else if (currentPhase === 2 && i === 'ans') { activeAddSlot = 'ans'; updateAddSlotsStyle(); }
+  }
+
+  function updateAddSlotsStyle() {
+    const totalSlots = currentQ.targetBoxes * 2 - 1;
+    for (let i = 0; i < totalSlots; i++) {
+      const el = document.getElementById(`addSlot_${i}`);
+      if (!el) continue;
+      const isOp = (i % 2 === 1);
+      if (currentPhase === 1) {
+        el.className = (i === activeAddSlot) ? (isOp ? 'eq-box op-box active' : 'eq-box active') : (isOp ? 'eq-box op-box' : 'eq-box');
+      }
+    }
+    if (currentPhase === 2) { 
+      const ansBox = document.getElementById('addAnsBox');
+      ansBox.className = 'eq-box active';
+      ansBox.innerText = valAddAns || '?';
+    }
+  }
+
+  function focusMultBox(idx) {
+    if (currentPhase === 3 && (idx === 1 || idx === 'op' || idx === 2)) { activeMultIndex = idx; updateMultBoxesStyle(); }
+    else if (currentPhase === 4 && idx === 3) { activeMultIndex = 3; updateMultBoxesStyle(); }
+  }
+
+  function updateMultBoxesStyle() {
+    const b1 = document.getElementById('multBox1');
+    const bOp = document.getElementById('multBoxOp');
+    const b2 = document.getElementById('multBox2');
+    const b3 = document.getElementById('multBox3');
+
+    if (currentPhase === 3) {
+      b1.className = (activeMultIndex === 1) ? 'eq-box active' : 'eq-box';
+      bOp.className = (activeMultIndex === 'op') ? 'eq-box op-box active' : 'eq-box op-box';
+      b2.className = (activeMultIndex === 2) ? 'eq-box active' : 'eq-box';
+      b3.className = 'eq-box disabled'; b3.innerText = '🔒';
+    } else if (currentPhase === 4) {
+      b1.className = 'eq-box locked';
+      bOp.className = 'eq-box op-box locked';
+      b2.className = 'eq-box locked';
+      b3.className = 'eq-box active'; b3.innerText = valMult3 || '?';
+    }
+  }
+
+  function focusVMBox(target) {
+    if (vPhase === 1 && (target === 1 || target === 2)) { activeVMIndex = target; updateVMBoxesStyle(); }
+    else if (vPhase === 2 && (target === 'tens' || target === 'ones')) {
+      const totalAns = currentQ.perBox * currentQ.targetBoxes;
+      if (Math.floor(totalAns / 10) === 0 && target === 'tens') return;
+      activeVMIndex = target; updateVMBoxesStyle();
+    }
+  }
+
+  function updateVMBoxesStyle() {
+    const b1 = document.getElementById('vmBox1');
+    const b2 = document.getElementById('vmBox2');
+    const bTens = document.getElementById('vmBoxTens');
+    const bOnes = document.getElementById('vmBoxOnes');
+
+    if (vPhase === 1) {
+      if (activeVMIndex === 1) { b1.className = 'eq-box active'; b1.innerText = valVM1 || '?'; }
+      else if (valVM1 !== '') { b1.className = 'eq-box'; b1.innerText = valVM1; }
+      else { b1.className = 'eq-box disabled'; b1.innerText = '🔒'; }
+
+      if (activeVMIndex === 2) { b2.className = 'eq-box active'; b2.innerText = valVM2 || '?'; }
+      else if (valVM2 !== '') { b2.className = 'eq-box'; b2.innerText = valVM2; }
+      else { b2.className = 'eq-box disabled'; b2.innerText = '🔒'; }
+
+      bTens.className = 'eq-box disabled'; bTens.innerText = '🔒';
+      bOnes.className = 'eq-box disabled'; bOnes.innerText = '🔒';
+    } else if (vPhase === 2) {
+      b1.className = 'eq-box locked'; b2.className = 'eq-box locked';
+      
+      const totalAns = currentQ.perBox * currentQ.targetBoxes;
+      if (Math.floor(totalAns / 10) === 0) {
+        bTens.className = 'eq-box hidden-box';
+        bOnes.className = 'eq-box active';
+        bOnes.innerText = valVMOnes || '?';
+      } else {
+        bTens.classList.remove('hidden-box');
+        if (activeVMIndex === 'tens') { bTens.className = 'eq-box active'; bTens.innerText = valVMTens || '?'; }
+        else if (valVMTens !== '') { bTens.className = 'eq-box'; bTens.innerText = valVMTens; }
+        else { bTens.className = 'eq-box disabled'; bTens.innerText = '🔒'; }
+
+        if (activeVMIndex === 'ones') { bOnes.className = 'eq-box active'; bOnes.innerText = valVMOnes || '?'; }
+        else if (valVMOnes !== '') { bOnes.className = 'eq-box'; bOnes.innerText = valVMOnes; }
+        else { bOnes.className = 'eq-box disabled'; bOnes.innerText = '🔒'; }
+      }
+    }
+  }
+
+  function handleLevelCompletion() {
+    document.getElementById('successOverlay').classList.add('hidden');
+    playSound('win');
+    const titleEl = document.getElementById('modalTitle');
+    const descEl = document.getElementById('modalDesc');
+    const nextBtn = document.getElementById('nextLevelBtn');
+
+    if (gameLevel === 1) {
+      titleEl.innerText = '🏆 恭喜完成 Level 1！';
+      descEl.innerText = '太棒了！你已成功答對橫式概念的 5 條題目！';
+      nextBtn.innerText = '前往 Level 2 ➔';
+      nextBtn.onclick = () => { gameLevel = 2; qIndex = 0; initQuestion(); };
+    } else if (gameLevel === 2) {
+      titleEl.innerText = '🏆 恭喜完成 Level 2！';
+      descEl.innerText = '太棒了！你已成功答對直式計算的 5 條題目！';
+      nextBtn.innerText = '前往 Level 3 ➔';
+      nextBtn.onclick = () => { gameLevel = 3; qIndex = 0; initQuestion(); };
+    } else {
+      titleEl.innerText = '🏆 恭喜完成 Level 3 極限挑戰！';
+      descEl.innerText = '太厲害了！你已成功答對所有直式心算題目！';
+      nextBtn.innerText = '🔄 再玩一次';
+      nextBtn.onclick = () => { gameLevel = 3; qIndex = 0; initQuestion(); };
+    }
+
+    document.getElementById('levelNextModal').classList.remove('hidden');
+  }
+
+  function addBox() {
+    const cfg = currentQ;
+    if (placedBoxes < cfg.targetBoxes) {
+      placedBoxes++;
+      playSound('pop');
+
+      const grid = document.getElementById('boxesGrid');
+      const boxDiv = document.createElement('div');
+      boxDiv.className = 'item-box';
+      
+      let itemsHTML = '';
+      for (let i = 0; i < cfg.perBox; i++) itemsHTML += cfg.icon;
+
+      boxDiv.innerHTML = `<div class="box-items">${itemsHTML}</div>`;
+      grid.appendChild(boxDiv);
+
+      if (placedBoxes < cfg.targetBoxes) {
+        document.getElementById('addBoxBtn').innerText = `➕ 擺放第 ${placedBoxes + 1} 盒`;
+      } else {
+        document.getElementById('addBoxBtn').classList.add('hidden');
+        playSound('win');
+        document.getElementById('inputArea').classList.remove('hidden');
+        document.getElementById('feedback').className = 'feedback correct';
+        document.getElementById('feedback').innerText = '🎉 第一步：請輸入連加算式數字與 + 符號：';
+      }
+    }
+  }
+
+  function pressKey(val) {
+    playSound('pop');
+
+    if (gameLevel === 1) {
+      const totalSlots = currentQ.targetBoxes * 2 - 1;
+      if (currentPhase === 1) {
+        if (val === '×' || val === '÷') return;
+
+        if (val === '+' || val === '-') {
+          if (activeAddSlot % 2 === 1) {
+            valAddSlots[activeAddSlot] = val;
+            document.getElementById(`addSlot_${activeAddSlot}`).innerText = val;
+            if (activeAddSlot < totalSlots - 1) activeAddSlot++;
+            updateAddSlotsStyle();
+          } else {
+            if (valAddSlots[activeAddSlot] !== '') {
+              if (activeAddSlot + 1 < totalSlots) {
+                valAddSlots[activeAddSlot + 1] = val;
+                document.getElementById(`addSlot_${activeAddSlot + 1}`).innerText = val;
+                activeAddSlot = Math.min(totalSlots - 1, activeAddSlot + 2);
+                updateAddSlotsStyle();
+              }
+            }
+          }
+          return;
+        }
+
+        if (typeof activeAddSlot === 'number') {
+          if (activeAddSlot % 2 === 1) { activeAddSlot++; updateAddSlotsStyle(); }
+          if (activeAddSlot % 2 === 0) {
+            if (valAddSlots[activeAddSlot].length < 2) {
+              valAddSlots[activeAddSlot] += val;
+              document.getElementById(`addSlot_${activeAddSlot}`).innerText = valAddSlots[activeAddSlot];
+            }
+          }
+        }
+      } else if (currentPhase === 2) {
+        if (val === '+' || val === '-' || val === '×' || val === '÷') return;
+        if (valAddAns.length < 3) {
+          valAddAns += val; document.getElementById('addAnsBox').innerText = valAddAns;
+        }
+      } else if (currentPhase === 3) {
+        if (val === '×' || val === '÷' || val === '+' || val === '-') {
+          if (val === '×' || val === '÷') {
+            valMultOp = val; document.getElementById('multBoxOp').innerText = valMultOp;
+            activeMultIndex = 2; updateMultBoxesStyle();
+          }
+          return;
+        }
+
+        if (activeMultIndex === 1 && valMult1.length < 2) {
+          valMult1 += val; document.getElementById('multBox1').innerText = valMult1;
+        } else if (activeMultIndex === 'op') {
+          activeMultIndex = 2; updateMultBoxesStyle();
+          if (valMult2.length < 2) { valMult2 += val; document.getElementById('multBox2').innerText = valMult2; }
+        } else if (activeMultIndex === 2 && valMult2.length < 2) {
+          valMult2 += val; document.getElementById('multBox2').innerText = valMult2;
+        }
+      } else if (currentPhase === 4) {
+        if (val === '+' || val === '-' || val === '×' || val === '÷') return;
+        if (valMult3.length < 3) {
+          valMult3 += val; document.getElementById('multBox3').innerText = valMult3;
+        }
+      }
+    } else {
+      // Level 2 & Level 3 Keypad Logic
+      if (val === '+' || val === '-' || val === '×' || val === '÷') return;
+
+      if (vPhase === 1) {
+        if (activeVMIndex === 1) {
+          valVM1 = val; document.getElementById('vmBox1').innerText = valVM1;
+          activeVMIndex = 2; updateVMBoxesStyle();
+        } else if (activeVMIndex === 2) {
+          valVM2 = val; document.getElementById('vmBox2').innerText = valVM2;
+        }
+      } else if (vPhase === 2) {
+        const totalAns = currentQ.perBox * currentQ.targetBoxes;
+        if (Math.floor(totalAns / 10) === 0) {
+          valVMOnes = val; document.getElementById('vmBoxOnes').innerText = valVMOnes;
+        } else {
+          if (activeVMIndex === 'tens') {
+            valVMTens = val; document.getElementById('vmBoxTens').innerText = valVMTens;
+            activeVMIndex = 'ones'; updateVMBoxesStyle();
+          } else if (activeVMIndex === 'ones') {
+            valVMOnes = val; document.getElementById('vmBoxOnes').innerText = valVMOnes;
+          }
+        }
+      }
+    }
+  }
+
+  function pressDel() {
+    playSound('pop');
+    if (gameLevel === 1) {
+      if (currentPhase === 1) {
+        if (typeof activeAddSlot === 'number') {
+          if (valAddSlots[activeAddSlot].length > 0) {
+            valAddSlots[activeAddSlot] = valAddSlots[activeAddSlot].slice(0, -1);
+            document.getElementById(`addSlot_${activeAddSlot}`).innerText = valAddSlots[activeAddSlot] || '?';
+          } else if (activeAddSlot > 0) { activeAddSlot--; updateAddSlotsStyle(); }
+        }
+      } else if (currentPhase === 2) {
+        valAddAns = valAddAns.slice(0, -1);
+        document.getElementById('addAnsBox').innerText = valAddAns || '?';
+      } else if (currentPhase === 3) {
+        if (activeMultIndex === 2) {
+          if (valMult2.length > 0) { valMult2 = valMult2.slice(0, -1); document.getElementById('multBox2').innerText = valMult2 || '?'; }
+          else { activeMultIndex = 'op'; updateMultBoxesStyle(); }
+        } else if (activeMultIndex === 'op') {
+          valMultOp = ''; document.getElementById('multBoxOp').innerText = '?';
+          activeMultIndex = 1; updateMultBoxesStyle();
+        } else if (activeMultIndex === 1) {
+          valMult1 = valMult1.slice(0, -1); document.getElementById('multBox1').innerText = valMult1 || '?';
+        }
+      } else if (currentPhase === 4) {
+        valMult3 = valMult3.slice(0, -1); document.getElementById('multBox3').innerText = valMult3 || '?';
+      }
+    } else {
+      if (vPhase === 1) {
+        if (activeVMIndex === 2) {
+          valVM2 = ''; document.getElementById('vmBox2').innerText = '?'; activeVMIndex = 1; updateVMBoxesStyle();
+        } else if (activeVMIndex === 1) {
+          valVM1 = ''; document.getElementById('vmBox1').innerText = '?';
+        }
+      } else if (vPhase === 2) {
+        const totalAns = currentQ.perBox * currentQ.targetBoxes;
+        if (Math.floor(totalAns / 10) === 0) {
+          valVMOnes = ''; document.getElementById('vmBoxOnes').innerText = '?';
+        } else {
+          if (activeVMIndex === 'ones') {
+            if (valVMOnes !== '') { valVMOnes = ''; document.getElementById('vmBoxOnes').innerText = '?'; }
+            else { activeVMIndex = 'tens'; updateVMBoxesStyle(); }
+          } else if (activeVMIndex === 'tens') {
+            valVMTens = ''; document.getElementById('vmBoxTens').innerText = '?';
+          }
+        }
+      }
+    }
+  }
+
+  function submitStep() {
+    const cfg = currentQ;
+    const totalAns = cfg.perBox * cfg.targetBoxes;
+
+    if (gameLevel === 1) {
+      const totalSlots = cfg.targetBoxes * 2 - 1;
+      if (currentPhase === 1) {
+        let isCorrect = true;
+        for (let i = 0; i < totalSlots; i++) {
+          if (i % 2 === 0) {
+            if (parseInt(valAddSlots[i]) !== cfg.perBox) isCorrect = false;
+          } else {
+            if (valAddSlots[i] !== '+') isCorrect = false;
+          }
+        }
+
+        if (isCorrect) {
+          playSound('win'); currentPhase = 2; activeAddSlot = 'ans';
+          for (let i = 0; i < totalSlots; i++) {
+            const el = document.getElementById(`addSlot_${i}`);
+            const isOp = (i % 2 === 1);
+            el.className = isOp ? 'eq-box op-box locked' : 'eq-box locked';
+            el.innerText = (i % 2 === 0) ? `${cfg.perBox}` : `+`;
+          }
+          const ansEl = document.getElementById('addAnsBox');
+          ansEl.className = 'eq-box active'; ansEl.innerText = '?';
+          document.getElementById('feedback').className = 'feedback correct';
+          document.getElementById('feedback').innerText = '🎉 連加算式正確！請輸入連加總數：';
+        } else {
+          playSound('wrong'); document.getElementById('feedback').className = 'feedback wrong';
+          document.getElementById('feedback').innerText = '❌ 連加算式需要使用 + 符號，請再試一次！';
+        }
+      } else if (currentPhase === 2) {
+        if (parseInt(valAddAns) === totalAns) {
+          playSound('win');
+          const ansEl = document.getElementById('addAnsBox');
+          ansEl.className = 'eq-box locked'; ansEl.innerText = `${totalAns}`;
+
+          document.getElementById('addRowTick').classList.remove('hidden');
+          document.getElementById('multEqBar').classList.remove('hidden');
+          currentPhase = 3; activeMultIndex = 1; 
+          updateKeypadOperators(); updateMultBoxesStyle();
+
+          document.getElementById('feedback').className = 'feedback correct';
+          document.getElementById('feedback').innerText = '🎉 第二步：請輸入乘法算式與符號 (×)：';
+        } else {
+          playSound('wrong'); document.getElementById('feedback').className = 'feedback wrong';
+          document.getElementById('feedback').innerText = '❌ 連加總數不正確，請再數數看！';
+        }
+      } else if (currentPhase === 3) {
+        const num1 = parseInt(valMult1);
+        const num2 = parseInt(valMult2);
+        const isCorrect1 = (num1 === cfg.perBox && num2 === cfg.targetBoxes);
+        const isCorrect2 = (num1 === cfg.targetBoxes && num2 === cfg.perBox);
+
+        if (valMultOp === '×' && (isCorrect1 || isCorrect2)) {
+          playSound('win'); currentPhase = 4; activeMultIndex = 3;
+          const b1 = document.getElementById('multBox1');
+          const bOp = document.getElementById('multBoxOp');
+          const b2 = document.getElementById('multBox2');
+          const b3 = document.getElementById('multBox3');
+          
+          b1.className = 'eq-box locked'; b1.innerText = `${num1}`;
+          bOp.className = 'eq-box op-box locked'; bOp.innerText = `×`;
+          b2.className = 'eq-box locked'; b2.innerText = `${num2}`;
+          b3.className = 'eq-box active'; b3.innerText = '?';
+
+          document.getElementById('feedback').className = 'feedback correct';
+          document.getElementById('feedback').innerText = '🎉 乘法算式正確！請輸入乘法答案：';
+        } else {
+          playSound('wrong'); document.getElementById('feedback').className = 'feedback wrong';
+          if (valMultOp !== '×') document.getElementById('feedback').innerText = '❌ 乘法算式需要使用 × 符號哦！';
+          else document.getElementById('feedback').innerText = '❌ 乘法數字不正確，請再試一次！';
+        }
+      } else if (currentPhase === 4) {
+        const ansNum = parseInt(valMult3);
+        if (ansNum === totalAns) {
+          playSound('win');
+          document.getElementById('multBox3').className = 'eq-box locked';
+          document.getElementById('multBox3').innerText = `${totalAns}`;
+          document.getElementById('multRowTick').classList.remove('hidden');
+          document.getElementById('successText').innerText = '答對了！';
+          document.getElementById('successOverlay').classList.remove('hidden');
+          setTimeout(() => {
+            qIndex++;
+            if (qIndex >= 5) {
+              handleLevelCompletion();
+            } else {
+              initQuestion();
+            }
+          }, 1200);
+        } else {
+          playSound('wrong'); document.getElementById('feedback').className = 'feedback wrong';
+          document.getElementById('feedback').innerText = '❌ 乘法答案不正確，再數數看！';
+        }
+      }
+    } else {
+      // Level 2 & Level 3 Vertical Multiplication Logic
+      if (vPhase === 1) {
+        const num1 = parseInt(valVM1);
+        const num2 = parseInt(valVM2);
+        const isCorrect1 = (num1 === cfg.perBox && num2 === cfg.targetBoxes);
+        const isCorrect2 = (num1 === cfg.targetBoxes && num2 === cfg.perBox);
+
+        if (isCorrect1 || isCorrect2) {
+          playSound('win'); vPhase = 2;
+          
+          const tensVal = Math.floor(totalAns / 10);
+          activeVMIndex = (tensVal === 0) ? 'ones' : 'tens';
+
+          const b1 = document.getElementById('vmBox1');
+          const b2 = document.getElementById('vmBox2');
+          b1.className = 'eq-box locked'; b1.innerText = `${num1}`;
+          b2.className = 'eq-box locked'; b2.innerText = `${num2}`;
+          updateVMBoxesStyle();
+
+          document.getElementById('feedback').className = 'feedback correct';
+          document.getElementById('feedback').innerText = '🎉 直式數字正確！請輸入積（總數）：';
+        } else {
+          playSound('wrong'); document.getElementById('feedback').className = 'feedback wrong';
+          document.getElementById('feedback').innerText = '❌ 直式數字不太對哦，請再核對數字！';
+        }
+      } else if (vPhase === 2) {
+        const tensVal = Math.floor(totalAns / 10);
+        let submittedTotal = 0;
+
+        if (tensVal === 0) {
+          submittedTotal = parseInt(valVMOnes) || 0;
+        } else {
+          const subTens = parseInt(valVMTens) || 0;
+          const subOnes = parseInt(valVMOnes) || 0;
+          submittedTotal = subTens * 10 + subOnes;
+        }
+
+        if (submittedTotal === totalAns) {
+          playSound('win');
+          if (tensVal > 0) {
+            document.getElementById('vmBoxTens').className = 'eq-box locked';
+            document.getElementById('vmBoxTens').innerText = `${tensVal}`;
+          }
+          document.getElementById('vmBoxOnes').className = 'eq-box locked';
+          document.getElementById('vmBoxOnes').innerText = `${totalAns % 10}`;
+
+          document.getElementById('successText').innerText = '直式計算正確！';
+          document.getElementById('successOverlay').classList.remove('hidden');
+          setTimeout(() => {
+            qIndex++;
+            if (qIndex >= 5) {
+              handleLevelCompletion();
+            } else {
+              initQuestion();
+            }
+          }, 1200);
+        } else {
+          playSound('wrong'); document.getElementById('feedback').className = 'feedback wrong';
+          document.getElementById('feedback').innerText = '❌ 乘法積不正確，再算算看！';
+        }
+      }
+    }
+  }
+
+  initQuestion();
+</script>
+</body>
+</html>
