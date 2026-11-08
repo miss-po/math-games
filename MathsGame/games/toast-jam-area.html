@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>神秘圖形面積拼拼樂 - 面積概念大冒險</title>
+<style>
+  * { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
+  body {
+    width: 100vw; height: 100dvh; margin: 0; padding: 10px;
+    font-family: system-ui, -apple-system, 'Comic Sans MS', sans-serif;
+    background-color: #f0fdf4; display: flex; flex-direction: column; align-items: center; overflow: hidden;
+  }
+  .game-container { width: 100%; max-width: 680px; height: 100%; display: flex; flex-direction: column; gap: 8px; position: relative; }
+
+  .header {
+    display: flex; justify-content: space-between; align-items: center; gap: 6px;
+    background: #ffffff; padding: 8px 12px; border-radius: 14px; border: 3px solid #86efac; flex-wrap: wrap;
+  }
+  .back-btn {
+    background: #ef4444; color: white; border: none; padding: 6px 12px; border-radius: 10px;
+    font-size: 13px; font-weight: bold; text-decoration: none; box-shadow: 0 3px 0 #b91c1c; white-space: nowrap;
+  }
+  
+  .level-select {
+    background: #dcfce7; color: #15803d; border: 2px solid #86efac; padding: 6px 12px;
+    border-radius: 10px; font-weight: bold; font-size: 14px; outline: none; cursor: pointer;
+  }
+
+  .progress-container { display: flex; align-items: center; gap: 4px; font-weight: bold; font-size: 12px; color: #15803d; }
+  .progress-dot {
+    width: 24px; height: 24px; border-radius: 50%; background: #e2e8f0; border: 2px solid #cbd5e1;
+    display: flex; align-items: center; justify-content: center; font-size: 12px; color: #64748b; font-weight: bold;
+  }
+  .progress-dot.active { background: #bbf7d0; border-color: #22c55e; color: #15803d; }
+  .progress-dot.completed { background: #16a34a; border-color: #14532d; color: white; }
+
+  .canvas-card {
+    flex: 1; min-height: 200px; background: #ffffff; border: 3px solid #86efac;
+    border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 8px; position: relative;
+    cursor: pointer; box-shadow: inset 0 0 15px rgba(34, 197, 94, 0.05);
+  }
+  canvas { max-width: 100%; max-height: 100%; object-fit: contain; }
+
+  .instructions-banner {
+    background: #f0fdf4; border: 2px dashed #22c55e; border-radius: 12px;
+    padding: 6px 12px; font-size: 13px; font-weight: bold; color: #15803d; text-align: center; width: 100%;
+  }
+
+  .interactive-card {
+    background: #ffffff; border: 3px solid #86efac; border-radius: 16px; padding: 10px 12px;
+    display: flex; flex-direction: column; gap: 10px; align-items: center;
+  }
+
+  .counter-badge {
+    font-size: 16px; font-weight: bold; color: #15803d; background: #dcfce7;
+    padding: 8px 18px; border-radius: 20px; border: 2px solid #86efac; text-align: center;
+  }
+
+  /* Extra Large Option Buttons */
+  .mcq-container { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; max-width: 480px; }
+  .mcq-btn {
+    height: 64px; font-size: 22px; font-weight: bold; background: #dcfce7; color: #14532d;
+    border: 3px solid #22c55e; border-radius: 16px; cursor: pointer; box-shadow: 0 4px 0 #16a34a;
+    transition: transform 0.1s ease, background 0.15s ease;
+  }
+  .mcq-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #16a34a; }
+  .mcq-btn:hover { background: #bbf7d0; }
+
+  .action-btn {
+    background: #3b82f6; color: white; border: none; padding: 8px 18px;
+    border-radius: 10px; font-size: 14px; font-weight: bold; cursor: pointer; box-shadow: 0 3px 0 #1d4ed8;
+  }
+
+  .feedback { font-size: 15px; font-weight: bold; min-height: 22px; text-align: center; }
+  .correct { color: #16a34a; }
+  .wrong { color: #dc2626; }
+  .hidden { display: none !important; }
+
+  /* Success Overlay */
+  .big-tick-overlay {
+    position: absolute; inset: 0; background: rgba(255,255,255,0.94);
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    border-radius: 16px; z-index: 20; animation: fadeIn 0.2s ease;
+  }
+  .big-tick-icon {
+    font-size: 85px; color: #16a34a; line-height: 1;
+    animation: bouncePop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+  .big-tick-text { font-size: 20px; font-weight: bold; color: #15803d; margin-top: 8px; text-align: center; padding: 0 12px; }
+  
+  @keyframes bouncePop { 0% { transform: scale(0); } 70% { transform: scale(1.2); } 100% { transform: scale(1); } }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  .modal-overlay {
+    position: absolute; inset: 0; background: rgba(0,0,0,0.6); display: flex;
+    justify-content: center; align-items: center; border-radius: 16px; z-index: 30;
+  }
+  .modal-content {
+    background: white; border-radius: 20px; padding: 24px; text-align: center;
+    border: 4px solid #22c55e; box-shadow: 0 10px 25px rgba(0,0,0,0.2); animation: bouncePop 0.4s ease; max-width: 90%;
+  }
+  .modal-title { font-size: 22px; color: #15803d; font-weight: bold; margin-bottom: 8px; }
+  .modal-btn {
+    margin-top: 14px; background: #22c55e; color: white; border: none; padding: 10px 22px;
+    font-size: 16px; font-weight: bold; border-radius: 12px; cursor: pointer; box-shadow: 0 4px 0 #15803d;
+  }
+</style>
+</head>
+<body>
+
+<div class="game-container">
+  <div class="header">
+    <a href="../index.html" class="back-btn">🏠 選單</a>
+    
+    <!-- Neutral Dropdown Options (Zero Hints) -->
+    <select id="levelSelect" class="level-select" onchange="selectLevel(this.value)">
+      <option value="1">🎮 關卡 1</option>
+      <option value="2">🎮 關卡 2</option>
+      <option value="3">🎮 關卡 3</option>
+      <option value="4">🎮 關卡 4</option>
+      <option value="5">🎮 關卡 5</option>
+    </select>
+
+    <div class="progress-container">
+      <div class="progress-dot" id="dot-1">1</div>
+      <div class="progress-dot" id="dot-2">2</div>
+      <div class="progress-dot" id="dot-3">3</div>
+      <div class="progress-dot" id="dot-4">4</div>
+      <div class="progress-dot" id="dot-5">5</div>
+    </div>
+  </div>
+
+  <div class="instructions-banner" id="instructionsText">
+    👇 點擊虛線格仔填滿圖形，看看隱藏的神秘圖案是什麼！
+  </div>
+
+  <div class="canvas-card" onclick="handleCanvasClick(event)">
+    <canvas id="shapeCanvas"></canvas>
+  </div>
+
+  <div class="interactive-card">
+    <div class="counter-badge" id="counterBadge">
+      🧩 已填滿：0 格 (0 cm²)
+    </div>
+
+    <button class="action-btn" id="quickFillBtn" onclick="fillAllSquares()">✨ 一鍵填滿圖案</button>
+
+    <div class="mcq-container hidden" id="mcqContainer"></div>
+    <div class="feedback" id="feedback"></div>
+  </div>
+
+  <!-- Big Tick Overlay -->
+  <div class="big-tick-overlay hidden" id="bigTickOverlay">
+    <div class="big-tick-icon">✔</div>
+    <div class="big-tick-text" id="bigTickText">答對了！</div>
+  </div>
+
+  <!-- Stage Complete Modal -->
+  <div class="modal-overlay hidden" id="levelModal">
+    <div class="modal-content">
+      <div class="modal-title" id="modalTitle">🎉 恭喜完成！</div>
+      <p id="modalDesc" style="font-size:15px; font-weight:bold; color:#475569;">你已經完全掌握了圖形面積概念！</p>
+      <button class="modal-btn" onclick="nextLevel()">挑戰下一個神秘圖案 🚀</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Web Audio Synthesizer
+  const AudioContext = window.AudioContext || window.webkitAudioContext;
+  let audioCtx = null;
+
+  function initAudio() {
+    if (!audioCtx) audioCtx = new AudioContext();
+  }
+
+  function playSound(type) {
+    initAudio();
+    if (!audioCtx) return;
+
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    const now = audioCtx.currentTime;
+
+    if (type === 'pop') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(450, now);
+      osc.frequency.exponentialRampToValueAtTime(850, now + 0.08);
+      gain.gain.setValueAtTime(0.2, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+      osc.start(now); osc.stop(now + 0.08);
+    } else if (type === 'correct') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(523.25, now);
+      osc.frequency.setValueAtTime(659.25, now + 0.1);
+      osc.frequency.setValueAtTime(783.99, now + 0.2);
+      gain.gain.setValueAtTime(0.3, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+      osc.start(now); osc.stop(now + 0.4);
+    } else if (type === 'wrong') {
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(180, now);
+      osc.frequency.setValueAtTime(140, now + 0.15);
+      gain.gain.setValueAtTime(0.3, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+      osc.start(now); osc.stop(now + 0.3);
+    } else if (type === 'levelup') {
+      osc.type = 'triangle';
+      const notes = [440, 554.37, 659.25, 880];
+      notes.forEach((freq, i) => {
+        osc.frequency.setValueAtTime(freq, now + i * 0.1);
+      });
+      gain.gain.setValueAtTime(0.4, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+      osc.start(now); osc.stop(now + 0.6);
+    }
+  }
+
+  // 5 Mystery Shapes with Realistic Grids & Increasing Cell Counts (5 -> 18)
+  const shapeLevels = {
+    1: {
+      name: '太空火箭',
+      icon: '🚀',
+      cols: 3, rows: 4,
+      grid: [
+        [0, 1, 0], // Tip (1)
+        [0, 1, 0], // Body (1)
+        [1, 1, 1], // Base & Wings (3) -> Total 5
+        [0, 0, 0]
+      ],
+      outlineColor: '#0284c7', fillColor: '#38bdf8'
+    },
+    2: {
+      name: '夢幻帆船',
+      icon: '⛵',
+      cols: 4, rows: 4,
+      grid: [
+        [0, 1, 0, 0], // Sail Top (1)
+        [0, 1, 1, 0], // Sail Mid (2)
+        [0, 1, 0, 0], // Mast (1)
+        [1, 1, 1, 1]  // Hull (4) -> Total 8
+      ],
+      outlineColor: '#b45309', fillColor: '#f59e0b'
+    },
+    3: {
+      name: '可愛蘑菇',
+      icon: '🍄',
+      cols: 5, rows: 3,
+      grid: [
+        [0, 1, 1, 1, 0], // Cap Top (3)
+        [1, 1, 1, 1, 1], // Cap Wide (5)
+        [0, 1, 1, 1, 0]  // Stem (3) -> Total 11
+      ],
+      outlineColor: '#b91c1c', fillColor: '#ef4444'
+    },
+    4: {
+      name: '復古汽車',
+      icon: '🚗',
+      cols: 6, rows: 4,
+      grid: [
+        [0, 0, 1, 1, 0, 0], // Roof (2)
+        [0, 1, 1, 1, 1, 0], // Windows (4)
+        [1, 1, 1, 1, 1, 1], // Body (6)
+        [0, 1, 0, 0, 1, 0]  // Wheels (2) -> Total 14
+      ],
+      outlineColor: '#1d4ed8', fillColor: '#3b82f6'
+    },
+    5: {
+      name: '童話城堡',
+      icon: '🏰',
+      cols: 5, rows: 4,
+      grid: [
+        [1, 0, 1, 0, 1], // Turrets (3)
+        [1, 1, 1, 1, 1], // Upper Wall (5)
+        [1, 1, 1, 1, 1], // Mid Wall (5)
+        [1, 1, 1, 1, 1]  // Base (5) -> Total 18
+      ],
+      outlineColor: '#6b21a8', fillColor: '#a855f7'
+    }
+  };
+
+  let currentLevel = 1;
+  let cellStates = [];
+  let totalSquares = 0;
+  let filledSquares = 0;
+  let isFullyCovered = false;
+
+  const canvas = document.getElementById('shapeCanvas');
+  const ctx = canvas.getContext('2d');
+
+  function updateDots() {
+    for (let i = 1; i <= 5; i++) {
+      const dot = document.getElementById(`dot-${i}`);
+      dot.className = 'progress-dot';
+      if (i < currentLevel) dot.classList.add('completed');
+      else if (i === currentLevel) dot.classList.add('active');
+    }
+  }
+
+  function selectLevel(lvl) {
+    currentLevel = parseInt(lvl);
+    initLevel();
+  }
+
+  function initLevel() {
+    updateDots();
+    document.getElementById('levelSelect').value = currentLevel;
+    document.getElementById('mcqContainer').classList.add('hidden');
+    document.getElementById('quickFillBtn').classList.remove('hidden');
+    document.getElementById('feedback').innerText = '';
+    document.getElementById('instructionsText').innerText = '👇 點擊虛線格仔填滿圖形，看看隱藏的神秘圖案是什麼！';
+
+    isFullyCovered = false;
+    totalSquares = 0;
+    filledSquares = 0;
+
+    const config = shapeLevels[currentLevel];
+    cellStates = config.grid.map(row => row.map(cell => {
+      if (cell === 1) totalSquares++;
+      return false;
+    }));
+
+    updateCounter();
+    drawShape();
+  }
+
+  function updateCounter() {
+    // ZERO HINTS: Displays strictly filled count without total limit or shape names
+    document.getElementById('counterBadge').innerText = `🧩 已填滿：${filledSquares} 格 (${filledSquares} cm²)`;
+  }
+
+  function drawShape() {
+    const parent = canvas.parentElement;
+    canvas.width = parent.clientWidth - 16;
+    canvas.height = parent.clientHeight - 16;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const config = shapeLevels[currentLevel];
+    const maxCellWidth = (canvas.width - 60) / config.cols;
+    const maxCellHeight = (canvas.height - 60) / config.rows;
+    const cellSize = Math.min(maxCellWidth, maxCellHeight, 72);
+
+    const startX = (canvas.width - config.cols * cellSize) / 2;
+    const startY = (canvas.height - config.rows * cellSize) / 2;
+
+    const progressRatio = totalSquares > 0 ? filledSquares / totalSquares : 0;
+
+    // 1. Blueprint Outer Border
+    for (let r = 0; r < config.rows; r++) {
+      for (let c = 0; c < config.cols; c++) {
+        if (config.grid[r][c] === 1) {
+          const x = startX + c * cellSize;
+          const y = startY + r * cellSize;
+
+          ctx.fillStyle = config.outlineColor;
+          ctx.beginPath();
+          ctx.roundRect(x - 2, y - 2, cellSize + 4, cellSize + 4, 8);
+          ctx.fill();
+        }
+      }
+    }
+
+    // 2. Grid Cells Drawing
+    for (let r = 0; r < config.rows; r++) {
+      for (let c = 0; c < config.cols; c++) {
+        if (config.grid[r][c] === 1) {
+          const x = startX + c * cellSize;
+          const y = startY + r * cellSize;
+
+          if (cellStates[r][c]) {
+            // Filled cell
+            ctx.fillStyle = config.fillColor;
+            ctx.beginPath();
+            ctx.roundRect(x + 2, y + 2, cellSize - 4, cellSize - 4, 6);
+            ctx.fill();
+
+            // Inner shine highlight
+            ctx.fillStyle = 'rgba(255,255,255,0.35)';
+            ctx.beginPath();
+            ctx.roundRect(x + 5, y + 5, cellSize - 10, (cellSize - 10) * 0.35, 4);
+            ctx.fill();
+
+            // 1 cm² Badge Label
+            ctx.fillStyle = '#ffffff';
+            ctx.font = `bold ${Math.max(11, Math.floor(cellSize * 0.23))}px system-ui`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('1 cm²', x + cellSize / 2, y + cellSize / 2);
+          } else {
+            // Unfilled slot - Clean Dashed Blueprint Line
+            ctx.fillStyle = '#f8fafc';
+            ctx.beginPath();
+            ctx.roundRect(x + 2, y + 2, cellSize - 4, cellSize - 4, 6);
+            ctx.fill();
+
+            ctx.strokeStyle = config.outlineColor;
+            ctx.setLineDash([4, 4]);
+            ctx.lineWidth = 1.8;
+            ctx.strokeRect(x + 5, y + 5, cellSize - 10, cellSize - 10);
+            ctx.setLineDash([]);
+          }
+        }
+      }
+    }
+
+    // 3. Realistic Cartoon Features emerge smoothly as progress increases
+    if (progressRatio > 0) {
+      drawCharacterDetails(currentLevel, startX, startY, cellSize, progressRatio);
+    }
+  }
+
+  // Realistic Cartoon Overlays per Level
+  function drawCharacterDetails(lvl, startX, startY, s, progress) {
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, Math.pow(progress, 1.2)); // Smooth fade-in
+
+    if (lvl === 1) { // 🚀 ROCKET
+      // Nose cone red tip
+      ctx.fillStyle = '#ef4444';
+      ctx.beginPath();
+      ctx.moveTo(startX + 1.5 * s, startY + 0.1 * s);
+      ctx.lineTo(startX + 1.1 * s, startY + 0.8 * s);
+      ctx.lineTo(startX + 1.9 * s, startY + 0.8 * s);
+      ctx.fill();
+
+      // Porthole Window
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath(); ctx.arc(startX + 1.5 * s, startY + 1.5 * s, s * 0.22, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#38bdf8';
+      ctx.beginPath(); ctx.arc(startX + 1.5 * s, startY + 1.5 * s, s * 0.15, 0, Math.PI * 2); ctx.fill();
+
+      // Thruster Flame
+      ctx.fillStyle = '#f97316';
+      ctx.beginPath();
+      ctx.moveTo(startX + 1.2 * s, startY + 3 * s);
+      ctx.lineTo(startX + 1.5 * s, startY + 3.6 * s);
+      ctx.lineTo(startX + 1.8 * s, startY + 3 * s);
+      ctx.fill();
+
+    } else if (lvl === 2) { // ⛵ SAILBOAT
+      // Flag on top mast
+      ctx.fillStyle = '#ef4444';
+      ctx.beginPath();
+      ctx.moveTo(startX + 1.5 * s, startY + 0.1 * s);
+      ctx.lineTo(startX + 2.1 * s, startY + 0.3 * s);
+      ctx.lineTo(startX + 1.5 * s, startY + 0.5 * s);
+      ctx.fill();
+
+      // Wooden Hull Details
+      ctx.strokeStyle = '#78350f'; ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(startX + 0.2 * s, startY + 3.5 * s);
+      ctx.lineTo(startX + 3.8 * s, startY + 3.5 * s);
+      ctx.stroke();
+
+      // Ocean Waves at bottom
+      ctx.fillStyle = '#0284c7';
+      ctx.beginPath();
+      ctx.arc(startX + 1 * s, startY + 4 * s, s * 0.25, 0, Math.PI);
+      ctx.arc(startX + 2 * s, startY + 4 * s, s * 0.25, 0, Math.PI);
+      ctx.arc(startX + 3 * s, startY + 4 * s, s * 0.25, 0, Math.PI);
+      ctx.fill();
+
+    } else if (lvl === 3) { // 🍄 MUSHROOM
+      // White Polka Dots on Cap
+      ctx.fillStyle = '#ffffff';
+      [ {x: 1.5, y: 0.5}, {x: 2.5, y: 0.4}, {x: 3.5, y: 0.5}, {x: 0.8, y: 1.4}, {x: 4.2, y: 1.4} ].forEach(p => {
+        ctx.beginPath(); ctx.arc(startX + p.x * s, startY + p.y * s, s * 0.14, 0, Math.PI * 2); ctx.fill();
+      });
+
+      // Cute Face on Stem
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath(); ctx.arc(startX + 2.1 * s, startY + 2.4 * s, s * 0.08, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(startX + 2.9 * s, startY + 2.4 * s, s * 0.08, 0, Math.PI * 2); ctx.fill();
+      // Smile
+      ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(startX + 2.5 * s, startY + 2.5 * s, s * 0.12, 0.2, Math.PI - 0.2); ctx.stroke();
+
+    } else if (lvl === 4) { // 🚗 CAR
+      // Windows / Glare lines
+      ctx.fillStyle = '#93c5fd';
+      ctx.beginPath();
+      ctx.roundRect(startX + 2.2 * s, startY + 1.2 * s, s * 1.6, s * 0.6, 4);
+      ctx.fill();
+
+      // Headlight & Taillight
+      ctx.fillStyle = '#facc15'; ctx.beginPath(); ctx.arc(startX + 5.8 * s, startY + 2.5 * s, s * 0.12, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#ef4444'; ctx.beginPath(); ctx.arc(startX + 0.2 * s, startY + 2.5 * s, s * 0.12, 0, Math.PI * 2); ctx.fill();
+
+      // Realistic Wheels with Rims
+      [1.5, 4.5].forEach(wx => {
+        ctx.fillStyle = '#1e293b';
+        ctx.beginPath(); ctx.arc(startX + wx * s, startY + 3.5 * s, s * 0.32, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#94a3b8';
+        ctx.beginPath(); ctx.arc(startX + wx * s, startY + 3.5 * s, s * 0.16, 0, Math.PI * 2); ctx.fill();
+      });
+
+    } else if (lvl === 5) { // 🏰 CASTLE
+      // Yellow Kingdom Flags on Turrets
+      [0.5, 2.5, 4.5].forEach(tx => {
+        ctx.fillStyle = '#eab308';
+        ctx.beginPath();
+        ctx.moveTo(startX + tx * s, startY + 0.1 * s);
+        ctx.lineTo(startX + (tx + 0.4) * s, startY + 0.25 * s);
+        ctx.lineTo(startX + tx * s, startY + 0.4 * s);
+        ctx.fill();
+      });
+
+      // Wooden Arched Door
+      ctx.fillStyle = '#78350f';
+      ctx.beginPath();
+      ctx.roundRect(startX + 2 * s + 4, startY + 2.8 * s, s - 8, s * 1.1, [14, 14, 0, 0]);
+      ctx.fill();
+      // Door handle
+      ctx.fillStyle = '#facc15';
+      ctx.beginPath(); ctx.arc(startX + 2.25 * s, startY + 3.4 * s, 3, 0, Math.PI * 2); ctx.fill();
+    }
+
+    ctx.restore();
+  }
+
+  function handleCanvasClick(event) {
+    if (isFullyCovered) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const clickX = event.clientX - rect.left;
+    const clickY = event.clientY - rect.top;
+
+    const config = shapeLevels[currentLevel];
+    const maxCellWidth = (canvas.width - 60) / config.cols;
+    const maxCellHeight = (canvas.height - 60) / config.rows;
+    const cellSize = Math.min(maxCellWidth, maxCellHeight, 72);
+
+    const startX = (canvas.width - config.cols * cellSize) / 2;
+    const startY = (canvas.height - config.rows * cellSize) / 2;
+
+    for (let r = 0; r < config.rows; r++) {
+      for (let c = 0; c < config.cols; c++) {
+        if (config.grid[r][c] === 1) {
+          const x = startX + c * cellSize;
+          const y = startY + r * cellSize;
+
+          if (clickX >= x && clickX <= x + cellSize && clickY >= y && clickY <= y + cellSize) {
+            if (!cellStates[r][c]) {
+              cellStates[r][c] = true;
+              filledSquares++;
+              playSound('pop');
+              updateCounter();
+              drawShape();
+              checkCoverageComplete();
+            }
+            return;
+          }
+        }
+      }
+    }
+  }
+
+  function fillAllSquares() {
+    const config = shapeLevels[currentLevel];
+    filledSquares = 0;
+    for (let r = 0; r < config.rows; r++) {
+      for (let c = 0; c < config.cols; c++) {
+        if (config.grid[r][c] === 1) {
+          cellStates[r][c] = true;
+          filledSquares++;
+        }
+      }
+    }
+    playSound('pop');
+    updateCounter();
+    drawShape();
+    checkCoverageComplete();
+  }
+
+  function checkCoverageComplete() {
+    if (filledSquares === totalSquares && !isFullyCovered) {
+      isFullyCovered = true;
+      playSound('correct');
+      document.getElementById('instructionsText').innerText = `🎉 填滿完成了！猜猜看這個神秘圖案的面積是多少？`;
+      document.getElementById('quickFillBtn').classList.add('hidden');
+      renderMCQQuestion();
+    }
+  }
+
+  function renderMCQQuestion() {
+    const container = document.getElementById('mcqContainer');
+    container.innerHTML = '';
+    container.classList.remove('hidden');
+
+    document.getElementById('feedback').className = 'feedback correct';
+    document.getElementById('feedback').innerText = `❓ 請問這個神秘圖案一共用了多少個 1 cm² 方塊填滿？（面積是多少？）`;
+
+    const correctAns = `${totalSquares} cm²`;
+    let options = new Set([correctAns]);
+
+    while (options.size < 4) {
+      let rand = totalSquares + (Math.floor(Math.random() * 7) - 3);
+      if (rand > 0 && rand !== totalSquares) options.add(`${rand} cm²`);
+    }
+
+    let sortedOpts = Array.from(options).sort(() => Math.random() - 0.5);
+
+    sortedOpts.forEach(opt => {
+      const btn = document.createElement('button');
+      btn.className = 'mcq-btn';
+      btn.innerText = opt;
+      btn.onclick = () => checkMCQAnswer(opt);
+      container.appendChild(btn);
+    });
+  }
+
+  function checkMCQAnswer(selected) {
+    const correctAns = `${totalSquares} cm²`;
+    const config = shapeLevels[currentLevel];
+
+    if (selected === correctAns) {
+      playSound('correct');
+      // Reveal mystery item ONLY upon correct answer!
+      showBigTickOverlay(`答對了！這是【${config.icon} ${config.name}】，面積就是 ${totalSquares} cm²！`);
+    } else {
+      playSound('wrong');
+      document.getElementById('feedback').className = 'feedback wrong';
+      document.getElementById('feedback').innerText = '❌ 數數看輪廓裡面一共有多少個 1 cm² 的方塊？再試一次！';
+    }
+  }
+
+  function showBigTickOverlay(msg) {
+    const overlay = document.getElementById('bigTickOverlay');
+    document.getElementById('bigTickText').innerText = msg;
+    overlay.classList.remove('hidden');
+
+    setTimeout(() => {
+      overlay.classList.add('hidden');
+      if (currentLevel < 5) {
+        currentLevel++;
+        triggerLevelUp();
+      } else {
+        triggerLevelUp('🏆 太厲害了！你已通關全部關卡，完全掌握了圖形面積概念！');
+      }
+    }, 1800);
+  }
+
+  function triggerLevelUp(customText) {
+    playSound('levelup');
+    const prevConfig = shapeLevels[currentLevel - 1] || shapeLevels[5];
+    document.getElementById('modalTitle').innerText = customText ? customText : `🎉 成功揭曉關卡 ${currentLevel - 1}！`;
+    document.getElementById('modalDesc').innerText = customText
+      ? '你已準備好挑戰「圖形面積大冒險」的公式與計算囉！'
+      : `剛才揭曉的是【${prevConfig.icon} ${prevConfig.name}】！準備挑戰下一個神秘圖案 🚀`;
+    document.getElementById('levelModal').classList.remove('hidden');
+  }
+
+  function nextLevel() {
+    document.getElementById('levelModal').classList.add('hidden');
+    if (currentLevel > 5) currentLevel = 1;
+    initLevel();
+  }
+
+  window.addEventListener('resize', drawShape);
+  initLevel();
+</script>
+</body>
+</html>

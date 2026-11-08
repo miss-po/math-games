@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>直接比較面積 (重疊分類) - 多關卡版</title>
+<style>
+  * { box-sizing: border-box; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+  html, body {
+    width: 100%; height: 100%; height: 100dvh; margin: 0; padding: 12px 16px;
+    font-family: 'Comic Sans MS', 'Microsoft JhengHei', sans-serif;
+    background-color: #fdf4ff; display: flex; flex-direction: column; align-items: center; justify-content: space-between; overflow: hidden;
+  }
+  
+  header {
+    width: 100%; max-width: 980px; height: 60px; display: flex; justify-content: space-between; align-items: center;
+    padding: 0 20px; background: #ffffff; border-radius: 18px; box-shadow: 0 4px 10px rgba(0,0,0,0.06); flex-shrink: 0;
+    z-index: 20;
+  }
+  .back-btn { font-size: 20px; font-weight: bold; color: #d946ef; text-decoration: none; padding: 6px 16px; background: #fae8ff; border-radius: 12px; }
+  
+  .stage-select {
+    font-size: 18px; font-weight: bold; color: #a21caf; background: #f5d0fe;
+    border: 2px solid #d946ef; padding: 6px 12px; border-radius: 12px; cursor: pointer; outline: none;
+  }
+
+  .progress-container { display: flex; align-items: center; gap: 8px; font-size: 18px; font-weight: bold; color: #475569; }
+  .progress-dot { width: 34px; height: 34px; border-radius: 50%; background: #cbd5e1; display: flex; align-items: center; justify-content: center; font-size: 16px; color: white; }
+  .progress-dot.active { background: #d946ef; font-weight: bold; transform: scale(1.1); }
+
+  #instruction-box {
+    font-size: 26px; font-weight: bold; color: #0f172a; background: #fae8ff; padding: 10px 24px;
+    border-radius: 20px; margin: 4px 0; border: 4px solid #f0abfc; text-align: center; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    z-index: 20;
+  }
+
+  /* 遊戲操作與比較區域 */
+  #game-area {
+    width: 100%; max-width: 980px; flex: 1; position: relative; background: #ffffff;
+    border-radius: 24px; border: 4px dashed #f0abfc; overflow: visible !important; margin: 6px 0; min-height: 0;
+    z-index: 10;
+  }
+
+  /* 可拖曳比較的圖形 */
+  .draggable-shape {
+    position: absolute; cursor: grab; opacity: 0.95;
+    display: flex; align-items: center; justify-content: center;
+    filter: drop-shadow(0px 8px 12px rgba(0,0,0,0.15));
+    touch-action: none;
+  }
+  .draggable-shape:active { cursor: grabbing; opacity: 1; z-index: 9999 !important; }
+
+  /* 下方放置目標框區域 */
+  #drop-zone-area {
+    width: 100%; max-width: 980px; height: 130px; display: flex; justify-content: center;
+    align-items: center; gap: 30px; flex-shrink: 0; margin-bottom: 6px;
+    position: relative; z-index: 1;
+  }
+
+  .drop-box {
+    flex: 1; max-width: 320px; height: 100%; border: 4px dashed #94a3b8;
+    border-radius: 20px; background: rgba(255, 255, 255, 0.85); display: flex;
+    flex-direction: column; align-items: center; justify-content: center;
+    position: relative; transition: background-color 0.2s, border-color 0.2s, transform 0.2s;
+    z-index: 1;
+  }
+  .drop-box.box-large { border-color: #f472b6; background: rgba(255, 241, 242, 0.85); }
+  .drop-box.box-small { border-color: #38bdf8; background: rgba(240, 249, 255, 0.85); }
+  .drop-box.hovered { background: #f5d0fe; border-style: solid; transform: scale(1.03); }
+
+  /* 答案框文字大小與顏色對比 */
+  .box-large .box-label {
+    font-size: 32px; font-weight: 900; color: #e11d48; pointer-events: none;
+  }
+  .box-small .box-label {
+    font-size: 20px; font-weight: 900; color: #0284c7; pointer-events: none;
+  }
+
+  /* 答錯抖動動畫 */
+  .wrong-answer { animation: shake 0.5s ease-in-out; }
+  @keyframes shake {
+    0%, 100% { transform: translate3d(0, 0, 0); }
+    20%, 60% { transform: translate3d(-12px, 0, 0); }
+    40%, 80% { transform: translate3d(12px, 0, 0); }
+  }
+
+  /* 彈窗樣式 */
+  #stage-pass-modal, #stage-retry-modal, #reward-modal {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7);
+    display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 10000;
+  }
+  .modal-content {
+    background: white; padding: 35px 45px; border-radius: 25px; text-align: center;
+    max-width: 500px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  }
+  .star-icon { font-size: 90px; margin-bottom: 8px; animation: bounceStar 0.8s infinite alternate cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+  @keyframes bounceStar { from { transform: translateY(0) scale(1); } to { transform: translateY(-12px) scale(1.1); } }
+  .hand-icon { font-size: 100px; margin-bottom: 10px; animation: waveHand 1s infinite alternate ease-in-out; }
+  @keyframes waveHand { from { transform: rotate(-10deg); } to { transform: rotate(10deg); } }
+  .btn-next-stage, .btn-retry-stage, .btn-restart {
+    padding: 16px 36px; font-size: 26px; background-color: #d946ef; color: white;
+    border: none; border-radius: 16px; cursor: pointer; font-weight: bold;
+    box-shadow: 0 6px 16px rgba(217, 70, 239, 0.3); margin-top: 20px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <a href="../index.html" class="back-btn">🏠 主選單</a>
+  
+  <select class="stage-select" id="stage-select" onchange="onSelectStage(this.value)">
+    <option value="0">關卡 1 (雙色重疊分類)</option>
+    <option value="1">關卡 2 (多彩重疊分類)</option>
+    <option value="2">關卡 3 (三選一分類)</option>
+  </select>
+
+  <div class="progress-container">
+    <span>進度：</span>
+    <div class="progress-dot" id="dot-1">1</div>
+    <div class="progress-dot" id="dot-2">2</div>
+    <div class="progress-dot" id="dot-3">3</div>
+    <div class="progress-dot" id="dot-4">4</div>
+    <div class="progress-dot" id="dot-5">5</div>
+  </div>
+</header>
+
+<div id="instruction-box">
+  重疊比較後，將圖形拖入下方對應的框內
+</div>
+
+<div id="game-area"></div>
+<div id="drop-zone-area"></div>
+
+<!-- 通關與重試彈窗 -->
+<div id="stage-pass-modal">
+  <div class="modal-content">
+    <div class="star-icon">🌟</div>
+    <h2 style="font-size: 32px; color: #d946ef; margin: 12px 0; line-height: 1.4;">好叻啊，你答啱晒！<br>準備挑戰下一關</h2>
+    <button class="btn-next-stage" onclick="nextStage()">下一關 🚀</button>
+  </div>
+</div>
+
+<div id="stage-retry-modal">
+  <div class="modal-content">
+    <div class="star-icon">💪🏻</div>
+    <h2 style="font-size: 32px; color: #eab308; margin: 12px 0; line-height: 1.4;">加油，我們再試一次💪🏻</h2>
+    <button class="btn-retry-stage" onclick="retryCurrentStage()">重新開始 🔄</button>
+  </div>
+</div>
+
+<div id="reward-modal">
+  <div class="modal-content">
+    <div class="hand-icon">🙋‍♂️</div>
+    <h2 style="font-size: 36px; color: #d946ef; margin: 12px 0;">你完成了！舉手等候老師</h2>
+    <button class="btn-restart" onclick="restartGame()">重新開始 🔄</button>
+  </div>
+</div>
+
+<script>
+  const COLOR_LARGE = "#f472b6"; // Stage 1 大圖形粉紅
+  const COLOR_SMALL = "#38bdf8"; // Stage 1 小圖形粉藍
+
+  const RANDOM_COLORS = ["#a855f7", "#f97316", "#10b981", "#eab308", "#6366f1", "#ec4899", "#14b8a6"];
+
+  function createShapeSVG(type, width, height, fillColor) {
+    let path = '';
+    if (type === 'rect') {
+      path = `<rect x="4" y="4" width="${width-8}" height="${height-8}" rx="16" fill="${fillColor}" stroke="#0f172a" stroke-width="6"/>`;
+    } else if (type === 'circle') {
+      const r = (Math.min(width, height) - 8) / 2;
+      path = `<circle cx="${width/2}" cy="${height/2}" r="${r}" fill="${fillColor}" stroke="#0f172a" stroke-width="6"/>`;
+    } else if (type === 'triangle') {
+      path = `<polygon points="${width/2},6 6,${height-6} ${width-6},${height-6}" fill="${fillColor}" stroke="#0f172a" stroke-width="6" stroke-linejoin="round"/>`;
+    } else if (type === 'star') {
+      path = `<polygon points="${width*0.5},${height*0.05} ${width*0.63},${height*0.35} ${width*0.95},${height*0.38} ${width*0.71},${height*0.6} ${width*0.78},${height*0.92} ${width*0.5},${height*0.75} ${width*0.22},${height*0.92} ${width*0.29},${height*0.6} ${width*0.05},${height*0.38} ${width*0.37},${height*0.35}" fill="${fillColor}" stroke="#0f172a" stroke-width="6" stroke-linejoin="round"/>`;
+    } else if (type === 'l-shape') {
+      const w = width, h = height;
+      path = `<polygon points="6,6 ${w*0.4},6 ${w*0.4},${h*0.6} ${w-6},${h*0.6} ${w-6},${h-6} 6,${h-6}" fill="${fillColor}" stroke="#0f172a" stroke-width="6" stroke-linejoin="round"/>`;
+    }
+    return `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${path}</svg>`;
+  }
+
+  const stagesData = [
+    // Stage 1
+    [
+      { shapeType: "rect", sizes: [{ w: 250, h: 170 }, { w: 190, h: 129 }] },
+      { shapeType: "circle", sizes: [{ w: 250, h: 250 }, { w: 180, h: 180 }] },
+      { shapeType: "triangle", sizes: [{ w: 200, h: 200 }, { w: 260, h: 260 }] },
+      { shapeType: "star", sizes: [{ w: 190, h: 190 }, { w: 250, h: 250 }] },
+      { shapeType: "l-shape", sizes: [{ w: 260, h: 220 }, { w: 200, h: 169 }] }
+    ],
+    // Stage 2
+    [
+      { shapeType: "triangle", sizes: [{ w: 260, h: 260 }, { w: 200, h: 200 }] },
+      { shapeType: "rect", sizes: [{ w: 210, h: 150 }, { w: 260, h: 186 }] },
+      { shapeType: "circle", sizes: [{ w: 190, h: 190 }, { w: 250, h: 250 }] },
+      { shapeType: "l-shape", sizes: [{ w: 190, h: 160 }, { w: 250, h: 211 }] },
+      { shapeType: "star", sizes: [{ w: 250, h: 250 }, { w: 190, h: 190 }] }
+    ],
+    // Stage 3 (三選一，統一雙框)
+    [
+      { shapeType: "rect", sizes: [{ w: 170, h: 120 }, { w: 260, h: 185 }, { w: 210, h: 148 }] },
+      { shapeType: "circle", sizes: [{ w: 240, h: 240 }, { w: 170, h: 170 }, { w: 210, h: 210 }] },
+      { shapeType: "triangle", sizes: [{ w: 200, h: 200 }, { w: 230, h: 230 }, { w: 270, h: 270 }] },
+      { shapeType: "star", sizes: [{ w: 180, h: 180 }, { w: 220, h: 220 }, { w: 260, h: 260 }] },
+      { shapeType: "l-shape", sizes: [{ w: 220, h: 185 }, { w: 270, h: 228 }, { w: 170, h: 143 }] }
+    ]
+  ];
+
+  let currentStageIdx = 0;
+  let currentQuestionIdx = 0;
+  let isChecking = false;
+  let hasWrongInStage = false;
+  let placedCorrectCount = 0;
+  const totalRequiredCount = 2;
+
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+  function playSound(type) {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    if (type === 'fail') {
+      const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.frequency.setValueAtTime(220, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+      osc.start(); osc.stop(audioCtx.currentTime + 0.2);
+    } else if (type === 'success') {
+      const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.frequency.setValueAtTime(523.25, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(659.25, audioCtx.currentTime + 0.15);
+      gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+      osc.start(); osc.stop(audioCtx.currentTime + 0.2);
+    } else if (type === 'complete') {
+      [523, 659, 783, 1046].forEach((freq, idx) => {
+        const o = audioCtx.createOscillator(); const g = audioCtx.createGain();
+        o.connect(g); o.connect(audioCtx.destination); o.frequency.value = freq;
+        g.gain.setValueAtTime(0.2, audioCtx.currentTime + idx * 0.1);
+        o.start(audioCtx.currentTime + idx * 0.1); o.stop(audioCtx.currentTime + idx * 0.1 + 0.3);
+      });
+    }
+  }
+
+  function speak(text) {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const msg = new SpeechSynthesisUtterance(text);
+      msg.lang = 'zh-HK'; msg.rate = 0.85;
+      window.speechSynthesis.speak(msg);
+    }
+  }
+
+  function loadQuestion() {
+    isChecking = false;
+    placedCorrectCount = 0;
+    const q = stagesData[currentStageIdx][currentQuestionIdx];
+    document.getElementById('stage-select').value = currentStageIdx;
+
+    for(let i=1; i<=5; i++) {
+      const dot = document.getElementById(`dot-${i}`);
+      if(dot) dot.classList.toggle('active', i <= currentQuestionIdx + 1);
+    }
+
+    const gameArea = document.getElementById('game-area');
+    const dropZoneArea = document.getElementById('drop-zone-area');
+    gameArea.innerHTML = '';
+    
+    // 雙框簡化文字
+    dropZoneArea.innerHTML = `
+      <div class="drop-box box-large" id="target-box-large" data-target="large">
+        <div class="box-label">最大</div>
+      </div>
+      <div class="drop-box box-small" id="target-box-small" data-target="small">
+        <div class="box-label">最小</div>
+      </div>
+    `;
+
+    const containerW = gameArea.clientWidth || 900;
+    const containerH = gameArea.clientHeight || 400;
+
+    const areas = q.sizes.map(s => s.w * s.h);
+    const maxArea = Math.max(...areas);
+    const minArea = Math.min(...areas);
+    const maxIdx = areas.indexOf(maxArea);
+    const minIdx = areas.indexOf(minArea);
+
+    // 關鍵修復：計算圖形面積並排序，確保面積較小的 z-index 永遠較高
+    // 將面積依大到小排序，得到排序後的索引列表
+    const sortedIndicesByArea = q.sizes
+      .map((s, originalIdx) => ({ area: s.w * s.h, originalIdx }))
+      .sort((a, b) => b.area - a.area);
+
+    // 為每個原始圖形指派 baseZIndex（面積最大=100，次大=200，最小=300）
+    const zIndexMap = {};
+    sortedIndicesByArea.forEach((item, rank) => {
+      zIndexMap[item.originalIdx] = (rank + 1) * 100;
+    });
+
+    const shuffledColors = [...RANDOM_COLORS].sort(() => 0.5 - Math.random());
+
+    q.sizes.forEach((s, idx) => {
+      let fillColor = "";
+      if (currentStageIdx === 0) {
+        fillColor = (s.w * s.h === maxArea) ? COLOR_LARGE : COLOR_SMALL;
+      } else {
+        fillColor = shuffledColors[idx % shuffledColors.length];
+      }
+
+      let typeRole = "normal";
+      if (idx === maxIdx) typeRole = "large";
+      if (idx === minIdx) typeRole = "small";
+
+      const shapeEl = document.createElement('div');
+      shapeEl.className = 'draggable-shape';
+      shapeEl.dataset.role = typeRole;
+      shapeEl.style.width = `${s.w}px`;
+      shapeEl.style.height = `${s.h}px`;
+      shapeEl.innerHTML = createShapeSVG(q.shapeType, s.w, s.h, fillColor);
+
+      const step = containerW / (q.sizes.length + 1);
+      const posX = step * (idx + 1) - s.w / 2;
+      const posY = (containerH - s.h) / 2;
+
+      shapeEl.style.left = `${posX}px`;
+      shapeEl.style.top = `${posY}px`;
+
+      // 設置較小的圖形擁有較高圖層 z-index
+      const baseZIndex = zIndexMap[idx];
+      shapeEl.dataset.baseZindex = baseZIndex;
+      shapeEl.style.zIndex = baseZIndex;
+
+      makeDraggableToBox(shapeEl);
+      gameArea.appendChild(shapeEl);
+    });
+
+    if(currentStageIdx === 0 && currentQuestionIdx === 0) {
+      speak(`重疊比較後，將圖形拖入下方對應的框內`);
+    }
+  }
+
+  function makeDraggableToBox(el) {
+    let active = false, currentX = 0, currentY = 0, startX = 0, startY = 0;
+    let xOffset = 0, yOffset = 0;
+
+    el.addEventListener('mousedown', dragStart);
+    document.addEventListener('mousemove', drag);
+    document.addEventListener('mouseup', dragEnd);
+
+    el.addEventListener('touchstart', dragStart, { passive: false });
+    document.addEventListener('touchmove', drag, { passive: false });
+    document.addEventListener('touchend', dragEnd);
+
+    function dragStart(e) {
+      if (isChecking) return;
+      const clientX = (e.type === "touchstart") ? e.touches[0].clientX : e.clientX;
+      const clientY = (e.type === "touchstart") ? e.touches[0].clientY : e.clientY;
+
+      startX = clientX - xOffset;
+      startY = clientY - yOffset;
+
+      if (e.target === el || el.contains(e.target)) {
+        active = true;
+        // 拖曳進行中臨時置為最高（9999），放開後恢復為較小圖形較高（baseZindex）
+        el.style.zIndex = '9999';
+      }
+    }
+
+    function drag(e) {
+      if (!active) return;
+      e.preventDefault();
+      const clientX = (e.type === "touchmove") ? e.touches[0].clientX : e.clientX;
+      const clientY = (e.type === "touchmove") ? e.touches[0].clientY : e.clientY;
+
+      currentX = clientX - startX;
+      currentY = clientY - startY;
+      xOffset = currentX;
+      yOffset = currentY;
+
+      el.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
+
+      checkHoverBox(el);
+    }
+
+    function dragEnd() {
+      if (!active) return;
+      active = false;
+
+      const targetBox = findDroppedBox(el);
+      if (targetBox) {
+        const isCorrect = (el.dataset.role === targetBox.dataset.target);
+        if (isCorrect) {
+          playSound('success');
+          el.style.pointerEvents = 'none';
+          el.style.opacity = '0.85';
+          el.style.zIndex = '9999'; // 放置成功後維持置頂
+          placedCorrectCount++;
+
+          if (placedCorrectCount >= totalRequiredCount) {
+            isChecking = true;
+            setTimeout(() => {
+              currentQuestionIdx++;
+              if (currentQuestionIdx >= 5) {
+                if (hasWrongInStage) {
+                  playSound('fail');
+                  document.getElementById('stage-retry-modal').style.display = 'flex';
+                  speak("加油，我們再試一次");
+                } else {
+                  playSound('complete');
+                  document.getElementById('stage-pass-modal').style.display = 'flex';
+                  speak("好叻啊，你答啱晒！準備挑戰下一關");
+                }
+              } else {
+                loadQuestion();
+              }
+            }, 500);
+          }
+        } else {
+          // 放錯位置
+          hasWrongInStage = true;
+          playSound('fail');
+          el.classList.add('wrong-answer');
+          speak("放錯位置了，再重疊比較看看！");
+          
+          setTimeout(() => {
+            el.classList.remove('wrong-answer');
+            xOffset = 0; yOffset = 0;
+            el.style.transform = `translate3d(0px, 0px, 0)`;
+            // 復原為原有的圖層權重（較小者依然在上面）
+            el.style.zIndex = el.dataset.baseZindex;
+          }, 500);
+        }
+      } else {
+        // 放開但未進入答案框，恢復原本設定的圖層層級
+        el.style.zIndex = el.dataset.baseZindex;
+      }
+      clearHoverBox();
+    }
+  }
+
+  function checkHoverBox(el) {
+    const rect = el.getBoundingClientRect();
+    const boxes = document.querySelectorAll('.drop-box');
+    boxes.forEach(box => {
+      const bRect = box.getBoundingClientRect();
+      const isOver = !(rect.right < bRect.left || rect.left > bRect.right || rect.bottom < bRect.top || rect.top > bRect.bottom);
+      box.classList.toggle('hovered', isOver);
+    });
+  }
+
+  function findDroppedBox(el) {
+    const rect = el.getBoundingClientRect();
+    const boxes = document.querySelectorAll('.drop-box');
+    for (let box of boxes) {
+      const bRect = box.getBoundingClientRect();
+      const isOver = !(rect.right < bRect.left || rect.left > bRect.right || rect.bottom < bRect.top || rect.top > bRect.bottom);
+      if (isOver) return box;
+    }
+    return null;
+  }
+
+  function clearHoverBox() {
+    document.querySelectorAll('.drop-box').forEach(b => b.classList.remove('hovered'));
+  }
+
+  function nextStage() {
+    document.getElementById('stage-pass-modal').style.display = 'none';
+    currentQuestionIdx = 0;
+    currentStageIdx++;
+    hasWrongInStage = false;
+
+    if (currentStageIdx >= stagesData.length) {
+      document.getElementById('reward-modal').style.display = 'flex';
+      speak("你完成了！舉手等候老師");
+    } else {
+      loadQuestion();
+    }
+  }
+
+  function retryCurrentStage() {
+    document.getElementById('stage-retry-modal').style.display = 'none';
+    currentQuestionIdx = 0;
+    hasWrongInStage = false;
+    loadQuestion();
+  }
+
+  function onSelectStage(val) {
+    currentStageIdx = parseInt(val, 10);
+    currentQuestionIdx = 0;
+    hasWrongInStage = false;
+    loadQuestion();
+  }
+
+  function restartGame() {
+    document.getElementById('stage-pass-modal').style.display = 'none';
+    document.getElementById('stage-retry-modal').style.display = 'none';
+    document.getElementById('reward-modal').style.display = 'none';
+    currentStageIdx = 0;
+    currentQuestionIdx = 0;
+    hasWrongInStage = false;
+    loadQuestion();
+  }
+
+  window.onload = () => loadQuestion();
+</script>
+</body>
+</html>

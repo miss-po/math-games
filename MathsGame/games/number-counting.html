@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>數數大挑戰 - 超大圖案與選項</title>
+<style>
+  * { box-sizing: border-box; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+  html, body {
+    width: 100%; height: 100%; height: 100dvh; margin: 0; padding: 8px 12px;
+    font-family: 'Comic Sans MS', 'Microsoft JhengHei', sans-serif;
+    background-color: #f0fdf4; display: flex; flex-direction: column; align-items: center; justify-content: space-between; overflow: hidden;
+  }
+  
+  header {
+    width: 100%; max-width: 980px; height: 60px; display: flex; justify-content: space-between; align-items: center;
+    padding: 0 16px; background: #ffffff; border-radius: 16px; box-shadow: 0 2px 6px rgba(0,0,0,0.06); flex-shrink: 0;
+  }
+  .back-btn { font-size: 20px; font-weight: bold; color: #16a34a; text-decoration: none; padding: 6px 14px; background: #dcfce7; border-radius: 10px; }
+  
+  /* 自由關卡切換選單 */
+  .stage-select {
+    font-size: 20px;
+    font-weight: bold;
+    color: #15803d;
+    background: #bbf7d0;
+    border: 2px solid #16a34a;
+    padding: 6px 14px;
+    border-radius: 12px;
+    cursor: pointer;
+    outline: none;
+  }
+  
+  .progress-container { display: flex; align-items: center; gap: 8px; font-size: 18px; font-weight: bold; color: #475569; }
+  .progress-dot { width: 34px; height: 34px; border-radius: 50%; background: #cbd5e1; display: flex; align-items: center; justify-content: center; font-size: 16px; color: white; }
+  .progress-dot.active { background: #16a34a; font-weight: bold; transform: scale(1.1); }
+
+  #instruction-box {
+    font-size: 24px; font-weight: bold; color: #0f172a; background: #dcfce7; padding: 10px 24px;
+    border-radius: 16px; margin: 4px 0; border: 3px solid #4ade80; text-align: center; flex-shrink: 0;
+  }
+  .highlight-word { font-size: 1.4em; color: #16a34a; display: inline-block; vertical-align: middle; margin: 0 4px; font-weight: 900; }
+
+  #game-container {
+    width: 100%; max-width: 980px; flex: 1; display: flex; flex-direction: column;
+    justify-content: center; align-items: center; gap: 20px; min-height: 0;
+  }
+
+  /* 0px 縫隙格仔陣列 */
+  .grid-matrix {
+    display: grid;
+    gap: 0px;
+    border: 5px solid #16a34a;
+    border-radius: 16px;
+    background-color: #ffffff;
+    box-shadow: 0 8px 24px rgba(22, 163, 74, 0.2);
+    overflow: hidden;
+  }
+
+  .grid-cell {
+    border: 2px solid #86efac;
+    background-color: #ffffff;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    margin: 0;
+    position: relative;
+    transition: background-color 0.15s ease;
+  }
+
+  /* 圖案 (Emoji) 3 倍大 */
+  .cell-icon {
+    font-size: 75px;
+    line-height: 1;
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.15));
+  }
+
+  /* 數字角落標記 */
+  .cell-number {
+    position: absolute;
+    top: 4px;
+    right: 6px;
+    font-size: 20px;
+    font-weight: 900;
+    color: #ffffff;
+    background: #15803d;
+    border-radius: 50%;
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    display: none;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  }
+
+  .grid-cell.filled {
+    background-color: #bbf7d0;
+    border-color: #22c55e;
+  }
+  .grid-cell.filled .cell-number {
+    display: flex;
+  }
+
+  /* 答題選項按鈕 3 倍大 (高度 95px, 字體 48px) */
+  #answer-area {
+    display: flex;
+    gap: 36px;
+    min-height: 110px;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .option-btn {
+    min-width: 140px;
+    height: 95px;
+    font-size: 48px;
+    font-weight: 900;
+    background-color: #ffffff;
+    color: #16a34a;
+    border: 5px solid #16a34a;
+    border-radius: 24px;
+    cursor: pointer;
+    box-shadow: 0 8px 18px rgba(22, 163, 74, 0.25);
+    transition: transform 0.1s, background-color 0.1s;
+  }
+
+  .option-btn:active { transform: scale(0.92); }
+
+  .wrong-answer { animation: flashShake 0.6s ease-in-out 1; }
+
+  @keyframes flashShake {
+    0% { transform: translateX(0); border-color: #ef4444; background-color: #fee2e2; color: #ef4444; }
+    20% { transform: translateX(-8px); }
+    40% { transform: translateX(8px); }
+    60% { transform: translateX(-6px); }
+    80% { transform: translateX(6px); }
+    100% { transform: translateX(0); border-color: #16a34a; background-color: #ffffff; color: #16a34a; }
+  }
+
+  #success-overlay {
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    display: none; align-items: center; justify-content: center;
+    background: rgba(255, 255, 255, 0.4); z-index: 999; pointer-events: none;
+  }
+  .green-tick {
+    font-size: 180px; color: #22c55e;
+    text-shadow: 0 10px 30px rgba(34, 197, 94, 0.4);
+    animation: popScale 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  }
+
+  @keyframes popScale {
+    0% { transform: scale(0); opacity: 0; }
+    60% { transform: scale(1.2); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  /* 通過關卡與重試彈窗樣式 */
+  #stage-pass-modal, #stage-retry-modal, #reward-modal {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7);
+    display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 1000;
+  }
+  
+  .modal-content { 
+    background: white; 
+    padding: 35px 45px; 
+    border-radius: 25px; 
+    text-align: center; 
+    max-width: 500px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  }
+
+  .star-icon { 
+    font-size: 90px; 
+    margin-bottom: 8px; 
+    animation: bounceStar 0.8s infinite alternate cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+  }
+  @keyframes bounceStar { from { transform: translateY(0) scale(1); } to { transform: translateY(-12px) scale(1.1); } }
+
+  .hand-icon { font-size: 100px; margin-bottom: 10px; animation: waveHand 1s infinite alternate ease-in-out; }
+  @keyframes waveHand { from { transform: rotate(-10deg); } to { transform: rotate(10deg); } }
+
+  .btn-next-stage, .btn-retry-stage, .btn-restart { 
+    padding: 16px 36px; 
+    font-size: 26px; 
+    background-color: #16a34a; 
+    color: white; 
+    border: none; 
+    border-radius: 16px; 
+    cursor: pointer; 
+    font-weight: bold; 
+    box-shadow: 0 6px 16px rgba(22, 163, 74, 0.3); 
+    margin-top: 20px; 
+  }
+  .btn-next-stage:active, .btn-retry-stage:active, .btn-restart:active { transform: scale(0.95); }
+</style>
+</head>
+<body>
+
+<header>
+  <a href="../index.html" class="back-btn">🏠 主選單</a>
+  
+  <select class="stage-select" id="stage-select" onchange="onSelectStage(this.value)">
+    <option value="0">關卡 1 (1–5)</option>
+    <option value="1">關卡 2 (6–10)</option>
+    <option value="2">關卡 3 (11–15)</option>
+    <option value="3">關卡 4 (16–20)</option>
+  </select>
+
+  <div class="progress-container">
+    <span>進度：</span>
+    <div class="progress-dot" id="dot-1">1</div>
+    <div class="progress-dot" id="dot-2">2</div>
+    <div class="progress-dot" id="dot-3">3</div>
+    <div class="progress-dot" id="dot-4">4</div>
+    <div class="progress-dot" id="dot-5">5</div>
+  </div>
+</header>
+
+<div id="instruction-box">圖形總共有多少個？<span class="highlight-word">請選擇答案</span></div>
+
+<div id="game-container"></div>
+
+<div id="success-overlay"><div class="green-tick">✔</div></div>
+
+<!-- 單一關卡全對彈窗 -->
+<div id="stage-pass-modal">
+  <div class="modal-content">
+    <div class="star-icon">🌟</div>
+    <h2 style="font-size: 32px; color: #16a34a; margin: 12px 0; line-height: 1.4;">好叻啊，你答啱晒！<br>準備挑戰下一關</h2>
+    <button class="btn-next-stage" onclick="nextStage()">下一關 🚀</button>
+  </div>
+</div>
+
+<!-- 答錯重試彈窗 -->
+<div id="stage-retry-modal">
+  <div class="modal-content">
+    <div class="star-icon">💪🏻</div>
+    <h2 style="font-size: 32px; color: #eab308; margin: 12px 0; line-height: 1.4;">加油，我們再試一次💪🏻</h2>
+    <button class="btn-retry-stage" onclick="retryCurrentStage()">重新開始 🔄</button>
+  </div>
+</div>
+
+<!-- 全部 4 關通關獎勵彈窗 -->
+<div id="reward-modal">
+  <div class="modal-content">
+    <div class="hand-icon">🙋‍♂️</div>
+    <h2 style="font-size: 36px; color: #16a34a; margin: 12px 0;">你完成了！舉手等候老師</h2>
+    <button class="btn-restart" onclick="restartGame()">重新開始 🔄</button>
+  </div>
+</div>
+
+<script>
+  const itemPools = {
+    fruits:  ['🍎', '🍓', '🍌', '🍊', '🍉', '🍍', '🍑', '🍒'],
+    animals: ['🐶', '🐱', '🐰', '🐼', '🐥', '🐸', '🦁', '🐨'],
+    snacks:  ['🍿', '🍩', '🍿', '🍩', '🍪', '🧁', '🍦', '🍬', '🍭', '🍫'],
+    food:    ['🍕', '🍔', '🌮', '🍟', '🥟', '🍙', '🌭', '🥪']
+  };
+
+  const stages = [
+    { stageNum: 1, min: 1,  max: 5,  label: "關卡 1 (1–5)" },
+    { stageNum: 2, min: 6,  max: 10, label: "關卡 2 (6–10)" },
+    { stageNum: 3, min: 11, max: 15, label: "關卡 3 (11–15)" },
+    { stageNum: 4, min: 16, max: 20, label: "關卡 4 (16–20)" }
+  ];
+
+  let currentStageIdx = 0;
+  let currentQuestionIdx = 0;
+  let currentTargetCount = 0;
+  let clickCounter = 0;
+  let isChecking = false;
+  
+  // 記錄該關卡是否有答錯
+  let hasWrongInStage = false;
+
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+  function playClickSound() {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.frequency.setValueAtTime(350 + (clickCounter * 30), audioCtx.currentTime);
+    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+    osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+  }
+
+  function playSound(type) {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    if (type === 'fail') {
+      const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.frequency.setValueAtTime(220, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+      osc.start(); osc.stop(audioCtx.currentTime + 0.2);
+    } else if (type === 'success') {
+      const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.frequency.setValueAtTime(523.25, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(659.25, audioCtx.currentTime + 0.15);
+      gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+      osc.start(); osc.stop(audioCtx.currentTime + 0.2);
+    } else if (type === 'complete') {
+      [523, 659, 783, 1046].forEach((freq, idx) => {
+        const o = audioCtx.createOscillator(); const g = audioCtx.createGain();
+        o.connect(g); o.connect(audioCtx.destination); o.frequency.value = freq;
+        g.gain.setValueAtTime(0.2, audioCtx.currentTime + idx * 0.1);
+        o.start(audioCtx.currentTime + idx * 0.1); o.stop(audioCtx.currentTime + idx * 0.1 + 0.3);
+      });
+    }
+  }
+
+  function speak(text) {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const msg = new SpeechSynthesisUtterance(text);
+      msg.lang = 'zh-HK'; msg.rate = 0.85;
+      window.speechSynthesis.speak(msg);
+    }
+  }
+
+  function generateRandomQuestion(stg) {
+    const themeKeys = Object.keys(itemPools);
+    const randomTheme = themeKeys[Math.floor(Math.random() * themeKeys.length)];
+    const pool = itemPools[randomTheme];
+    const icon = pool[Math.floor(Math.random() * pool.length)];
+    const count = Math.floor(Math.random() * (stg.max - stg.min + 1)) + stg.min;
+
+    const optionsSet = new Set([count]);
+    while (optionsSet.size < 3) {
+      let offset = (Math.floor(Math.random() * 5) - 2);
+      let fakeVal = count + offset;
+      if (fakeVal >= stg.min && fakeVal <= stg.max && fakeVal !== count) {
+        optionsSet.add(fakeVal);
+      } else if (fakeVal > 0) {
+        optionsSet.add(fakeVal);
+      }
+    }
+
+    const options = Array.from(optionsSet).sort(() => Math.random() - 0.5);
+
+    return { icon, count, options };
+  }
+
+  function getBestGridDimensions(count) {
+    if (count <= 4) return { cols: count, rows: 1, cellSize: 120, iconSize: 85 };
+    if (count <= 6) return { cols: 3, rows: 2, cellSize: 110, iconSize: 78 };
+    if (count <= 10) return { cols: 5, rows: 2, cellSize: 100, iconSize: 70 };
+    if (count <= 12) return { cols: 4, rows: 3, cellSize: 95, iconSize: 65 };
+    if (count <= 15) return { cols: 5, rows: 3, cellSize: 85, iconSize: 60 };
+    return { cols: 5, rows: 4, cellSize: 75, iconSize: 52 };
+  }
+
+  function loadQuestion() {
+    isChecking = false;
+    clickCounter = 0;
+
+    const stg = stages[currentStageIdx];
+    document.getElementById('stage-select').value = currentStageIdx;
+
+    for(let i=1; i<=5; i++) {
+      const dot = document.getElementById(`dot-${i}`);
+      if(dot) dot.classList.toggle('active', i <= currentQuestionIdx + 1);
+    }
+
+    const qData = generateRandomQuestion(stg);
+    currentTargetCount = qData.count;
+
+    const layout = getBestGridDimensions(currentTargetCount);
+    let cellsHtml = '';
+
+    for (let i = 0; i < currentTargetCount; i++) {
+      cellsHtml += `
+        <div class="grid-cell" style="width:${layout.cellSize}px; height:${layout.cellSize}px;" onclick="clickCell(this)">
+          <span class="cell-icon" style="font-size: ${layout.iconSize}px;">${qData.icon}</span>
+          <span class="cell-number"></span>
+        </div>
+      `;
+    }
+
+    let btnsHtml = '';
+    qData.options.forEach(opt => {
+      btnsHtml += `<button class="option-btn" onclick="checkChoice(${opt}, this)">${opt}</button>`;
+    });
+
+    const container = document.getElementById('game-container');
+    container.innerHTML = `
+      <div class="grid-matrix" style="
+        grid-template-columns: repeat(${layout.cols}, ${layout.cellSize}px);
+        grid-template-rows: repeat(${layout.rows}, ${layout.cellSize}px);
+      ">
+        ${cellsHtml}
+      </div>
+      <div id="answer-area">
+        ${btnsHtml}
+      </div>
+    `;
+
+    if(currentStageIdx === 0 && currentQuestionIdx === 0) speak("圖形總共有多少個？請選擇答案");
+  }
+
+  function clickCell(el) {
+    if (isChecking || el.classList.contains('filled')) return;
+
+    clickCounter++;
+    el.classList.add('filled');
+    el.querySelector('.cell-number').innerText = clickCounter;
+    playClickSound();
+  }
+
+  function checkChoice(choice, el) {
+    if(isChecking) return;
+
+    if (choice === currentTargetCount) {
+      isChecking = true;
+      triggerSuccessOverlay(() => {
+        currentQuestionIdx++;
+
+        // 當完成該關卡的全部 5 條題目時
+        if (currentQuestionIdx >= 5) {
+          if (hasWrongInStage) {
+            // 曾有答錯：彈出「加油，我們再試一次💪🏻」彈窗
+            playSound('fail');
+            document.getElementById('stage-retry-modal').style.display = 'flex';
+            speak("加油，我們再試一次");
+          } else {
+            // 答啱晒（全對）：彈出過關獎勵提示框！
+            playSound('complete');
+            document.getElementById('stage-pass-modal').style.display = 'flex';
+            speak("好叻啊，你答啱晒！準備挑戰下一關");
+          }
+        } else {
+          loadQuestion();
+        }
+      });
+    } else {
+      isChecking = true;
+      hasWrongInStage = true; // 標記：該關卡曾答錯
+      playSound('fail');
+      el.classList.add('wrong-answer');
+      speak("再數一次看看！");
+      setTimeout(() => {
+        el.classList.remove('wrong-answer');
+        isChecking = false;
+      }, 650);
+    }
+  }
+
+  function triggerSuccessOverlay(callback) {
+    playSound('success');
+    const overlay = document.getElementById('success-overlay');
+    overlay.style.display = 'flex';
+    setTimeout(() => {
+      overlay.style.display = 'none';
+      if(callback) callback();
+    }, 600);
+  }
+
+  // 點擊「下一關」按鈕
+  function nextStage() {
+    document.getElementById('stage-pass-modal').style.display = 'none';
+    currentQuestionIdx = 0;
+    currentStageIdx++;
+    hasWrongInStage = false;
+
+    if (currentStageIdx >= stages.length) {
+      // 4 個關卡全部順利完成
+      document.getElementById('reward-modal').style.display = 'flex';
+      speak("你完成了！舉手等候老師");
+    } else {
+      loadQuestion();
+    }
+  }
+
+  // 點擊「加油，我們再試一次」彈窗的重新開始按鈕
+  function retryCurrentStage() {
+    document.getElementById('stage-retry-modal').style.display = 'none';
+    currentQuestionIdx = 0;
+    hasWrongInStage = false;
+    loadQuestion();
+  }
+
+  function onSelectStage(val) {
+    currentStageIdx = parseInt(val, 10);
+    currentQuestionIdx = 0;
+    hasWrongInStage = false;
+    loadQuestion();
+  }
+
+  function restartGame() {
+    document.getElementById('stage-pass-modal').style.display = 'none';
+    document.getElementById('stage-retry-modal').style.display = 'none';
+    document.getElementById('reward-modal').style.display = 'none';
+    currentStageIdx = 0;
+    currentQuestionIdx = 0;
+    hasWrongInStage = false;
+    loadQuestion();
+  }
+
+  window.onload = () => loadQuestion();
+</script>
+</body>
+</html>

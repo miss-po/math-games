@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>方向與空間學習遊戲 Direction Game</title>
+<style>
+  * { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
+  html, body {
+    width: 100vw; height: 100dvh; margin: 0; padding: 6px;
+    font-family: system-ui, -apple-system, sans-serif;
+    background-color: #f0fdf4; display: flex; flex-direction: column; align-items: center; overflow: hidden;
+  }
+  .game-container {
+    width: 100%; max-width: 650px; height: 100%; max-height: 100dvh;
+    display: flex; flex-direction: column; gap: 6px; position: relative; overflow: hidden;
+  }
+
+  /* Header Controls */
+  .header {
+    flex: 0 0 auto; display: flex; justify-content: space-between; align-items: center; gap: 4px;
+    background: #ffffff; padding: 6px 10px; border-radius: 12px; border: 2px solid #86efac; flex-wrap: wrap;
+  }
+  .back-btn {
+    background: #ef4444; color: white; border: none; padding: 4px 10px; border-radius: 8px;
+    font-size: 13px; font-weight: bold; text-decoration: none; box-shadow: 0 2px 0 #b91c1c; white-space: nowrap;
+  }
+  .select-group { display: flex; gap: 6px; align-items: center; }
+  .custom-select {
+    background: #16a34a; color: white; border: none; padding: 5px 8px; border-radius: 8px;
+    font-weight: bold; font-size: 12px; cursor: pointer; outline: none; box-shadow: 0 2px 0 #15803d;
+  }
+
+  /* Progress Dots */
+  .progress-container { display: flex; align-items: center; gap: 4px; }
+  .progress-dot {
+    width: 20px; height: 20px; border-radius: 50%; background: #e2e8f0; border: 2px solid #cbd5e1;
+    display: flex; align-items: center; justify-content: center; font-size: 11px; color: #64748b; font-weight: bold;
+  }
+  .progress-dot.active { background: #bbf7d0; border-color: #16a34a; color: #14532d; }
+  .progress-dot.completed { background: #22c55e; border-color: #15803d; color: white; }
+
+  /* Two Separate Bilingual Lines */
+  .instruction-card {
+    flex: 0 0 auto; background: #ffffff; border: 3px solid #4ade80; border-radius: 14px;
+    padding: 8px 12px; display: flex; align-items: center; gap: 10px; box-shadow: 0 3px 8px rgba(0,0,0,0.05);
+  }
+  .sound-btn {
+    background: #0284c7; color: white; border: none; width: 42px; height: 42px; border-radius: 50%;
+    font-size: 22px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    box-shadow: 0 3px 0 #0369a1; transition: transform 0.1s;
+  }
+  .sound-btn:active { transform: scale(0.92); }
+
+  .instruction-content { flex-grow: 1; display: flex; flex-direction: column; gap: 3px; }
+  .line-zh { font-size: 16px; font-weight: bold; color: #14532d; }
+  .line-en { font-size: 14px; font-weight: 600; color: #475569; }
+
+  /* Fully Matched Color Highlighting for Both Chinese & English */
+  .kw-highlight {
+    font-size: 19px; font-weight: 900; color: #9f1239; background: #ffe4e6;
+    padding: 2px 8px; border-radius: 8px; border: 2px solid #fda4af; display: inline-block; margin: 0 2px;
+  }
+
+  /* Stage Board Card */
+  .stage-card {
+    flex: 1 1 auto; width: 100%; background: #ffffff; border: 3px solid #4ade80;
+    border-radius: 18px; padding: 10px; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; position: relative; overflow: hidden; box-shadow: 0 4px 12px rgba(22, 163, 74, 0.1);
+  }
+
+  /* North Indicator Compass Tag */
+  .north-indicator {
+    position: absolute; top: 8px; right: 12px; background: #ffffff; border: 2px solid #dc2626;
+    border-radius: 10px; padding: 4px 8px; font-size: 13px; font-weight: bold; color: #dc2626;
+    display: flex; align-items: center; gap: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); z-index: 10;
+  }
+
+  /* Spatial Display Layouts */
+  .spatial-workspace {
+    display: flex; align-items: center; justify-content: center; gap: 16px; width: 100%; height: 100%;
+    position: relative;
+  }
+  .spatial-workspace.vertical { flex-direction: column; }
+  .spatial-workspace.horizontal { flex-direction: row; }
+
+  .ref-object-icon { font-size: 80px; line-height: 1; user-select: none; }
+
+  /* Standard & Semi-Transparent Overlay Drop Zones */
+  .drop-zone {
+    width: 105px; height: 105px; border: 3px dashed #16a34a; border-radius: 20px; background: #f0fdf4;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    transition: all 0.2s ease; position: relative; font-size: 45px;
+  }
+  .drop-zone.overlay-dropzone {
+    background: rgba(220, 252, 231, 0.55);
+    border: 3px dashed #16a34a;
+    border-radius: 20px;
+    padding: 6px;
+    width: 160px;
+    height: 110px;
+  }
+  .drop-zone.active-zone { background: #dcfce7; border-color: #15803d; transform: scale(1.05); }
+  .zone-hint { font-size: 12px; font-weight: bold; color: #16a34a; margin-top: 2px; text-align: center; }
+
+  /* Success & Wrong Visual Feedback Animations */
+  .drop-zone.correct-glow, .compass-cell-slot.correct-glow {
+    background: #dcfce7 !important; border: 4px solid #16a34a !important;
+    box-shadow: 0 0 15px #4ade80 !important; transform: scale(1.05); color: #15803d !important;
+  }
+  .drop-zone.wrong-shake, .compass-cell-slot.wrong-shake {
+    background: #fee2e2 !important; border: 4px solid #ef4444 !important;
+    box-shadow: 0 0 15px #fca5a5 !important; animation: shake 0.4s ease;
+  }
+
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-8px); }
+    40%, 80% { transform: translateX(8px); }
+  }
+
+  /* Draggable Elements */
+  .draggable-item {
+    font-size: 60px; cursor: grab; touch-action: none; display: inline-flex;
+    align-items: center; justify-content: center; user-select: none; z-index: 20;
+  }
+  .draggable-item.label-style {
+    font-size: 15px; font-weight: bold; padding: 10px 16px; background: #e0f2fe;
+    border: 3px solid #0284c7; border-radius: 14px; color: #0369a1; box-shadow: 0 4px 0 #0284c7;
+  }
+
+  /* Enlarged Map Grids */
+  .map-grid {
+    display: grid; gap: 8px; background: #ecfdf5; border: 3px solid #10b981;
+    border-radius: 18px; padding: 8px; position: relative;
+  }
+  .map-grid-3x3 { grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); width: 310px; height: 310px; }
+  .map-grid-5x5 { grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(5, 1fr); width: 320px; height: 320px; }
+
+  .map-cell {
+    background: #ffffff; border: 2px solid #a7f3d0; border-radius: 14px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-size: 42px; font-weight: bold; color: #065f46; position: relative;
+  }
+  .map-grid-5x5 .map-cell { font-size: 28px; border-radius: 10px; }
+
+  .map-cell.center-cell { background: #fef08a; border-color: #eab308; }
+  .map-cell.exit-cell { background: #fee2e2; border-color: #ef4444; color: #b91c1c; font-size: 13px; font-weight: bold; text-align: center; }
+
+  .walker-char { display: inline-block; transition: transform 0.2s ease; font-size: 40px; }
+
+  /* Perfectly Aligned Compass Board Layout */
+  .compass-board {
+    display: grid; grid-template-columns: repeat(3, 85px); grid-template-rows: repeat(3, 85px);
+    gap: 6px; justify-content: center; align-content: center;
+  }
+  .compass-cell-slot {
+    width: 85px; height: 85px; border-radius: 14px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-size: 18px; font-weight: bold; box-sizing: border-box; margin: 0;
+  }
+  .compass-cell-slot.center-compass {
+    background: #fef08a; border: 2.5px solid #eab308; font-size: 36px;
+  }
+  .drop-zone.compass-cell-slot {
+    background: #ffffff; border: 2.5px dashed #94a3b8; color: #475569;
+  }
+
+  /* Controls Card */
+  .controls-card {
+    flex: 0 0 auto; width: 100%; background: #ffffff; border: 2px solid #86efac; border-radius: 14px;
+    padding: 8px; display: flex; flex-direction: column; align-items: center; gap: 6px; min-height: 75px;
+  }
+  .options-flex { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; width: 100%; }
+
+  .nav-pad-4 { display: grid; grid-template-columns: repeat(3, 56px); grid-template-rows: repeat(2, 44px); gap: 6px; }
+  .nav-pad-8 { display: grid; grid-template-columns: repeat(3, 72px); gap: 6px; }
+  
+  .nav-btn {
+    font-size: 14px; font-weight: bold; background: #22c55e; color: white; border: none;
+    border-radius: 10px; cursor: pointer; box-shadow: 0 3px 0 #15803d; display: flex;
+    align-items: center; justify-content: center; padding: 4px;
+  }
+  .nav-btn:active { transform: translateY(2px); box-shadow: none; }
+
+  .option-btn {
+    padding: 8px 14px; font-size: 15px; font-weight: bold; color: #14532d; background: #f0fdf4;
+    border: 2px solid #86efac; border-radius: 12px; cursor: pointer; box-shadow: 0 3px 0 #86efac;
+    display: flex; align-items: center; justify-content: center; gap: 4px; transition: all 0.1s;
+  }
+  .option-btn:active { transform: translateY(2px); box-shadow: none; background: #bbf7d0; }
+
+  .feedback { font-size: 16px; font-weight: bold; min-height: 22px; text-align: center; }
+  .correct { color: #16a34a; }
+  .wrong { color: #dc2626; }
+  .hidden { display: none !important; }
+
+  /* Modals */
+  .overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 40; }
+  .modal-box {
+    background: white; border: 4px solid #16a34a; border-radius: 18px;
+    padding: 20px; text-align: center; max-width: 92%; width: 400px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2); animation: popIn 0.25s ease;
+  }
+  @keyframes popIn { 0% { transform: scale(0.7); } 100% { transform: scale(1); } }
+  .modal-btn { background: #16a34a; color: white; border: none; padding: 10px 20px; font-size: 16px; font-weight: bold; border-radius: 12px; cursor: pointer; }
+  .modal-btn-secondary { background: #64748b; color: white; border: none; padding: 10px 20px; font-size: 16px; font-weight: bold; border-radius: 12px; cursor: pointer; text-decoration: none; }
+</style>
+</head>
+<body>
+
+<div class="game-container">
+  <div class="header">
+    <a href="../index.html" class="back-btn">🏠 主頁</a>
+    
+    <div class="select-group">
+      <select id="progSelect" class="custom-select" onchange="changeProgression(this.value)">
+        <option value="1">進程1: 上下概念 (Top/Bottom)</option>
+        <option value="2">進程2: 左右概念 (Left/Right)</option>
+        <option value="3">進程3: 4大方位 (4 Directions)</option>
+        <option value="4">進程4: 8大方位 (8 Directions)</option>
+        <option value="5">進程5: 方向板填空 (Direction Board)</option>
+        <option value="6">進程6: 地圖導航員 (Map Walker)</option>
+      </select>
+      
+      <select id="levelSelect" class="custom-select" onchange="changeSubLevel(this.value)">
+        <option value="1">Level 1: 基礎學習 (Basic)</option>
+        <option value="2">Level 2: 進階學習 (Advance)</option>
+        <option value="3">Level 3: 高階挑戰 (Master)</option>
+      </select>
+    </div>
+    
+    <div class="progress-container">
+      <div class="progress-dot" id="dot-1">1</div>
+      <div class="progress-dot" id="dot-2">2</div>
+      <div class="progress-dot" id="dot-3">3</div>
+      <div class="progress-dot" id="dot-4">4</div>
+      <div class="progress-dot" id="dot-5">5</div>
+    </div>
+  </div>
+
+  <!-- Instruction Area: Two Separate Lines -->
+  <div class="instruction-card">
+    <button class="sound-btn" onclick="replayVoice()">🔊</button>
+    <div class="instruction-content">
+      <div class="line-zh" id="textZh">載入中...</div>
+      <div class="line-en" id="textEn">Loading...</div>
+    </div>
+  </div>
+
+  <!-- Stage Card -->
+  <div class="stage-card" id="stageCard">
+    <div class="north-indicator hidden" id="northIndicator">⬆️ 北 (North)</div>
+    <div class="spatial-workspace" id="spatialArea"></div>
+    <div class="map-grid map-grid-3x3 hidden" id="mapArea"></div>
+    <div class="compass-board hidden" id="compassBoard"></div>
+  </div>
+
+  <!-- Controls Card -->
+  <div class="controls-card">
+    <div class="options-flex" id="optionsFlex"></div>
+    <div class="feedback" id="feedback"></div>
+  </div>
+
+  <!-- Completion Medal Modal -->
+  <div class="overlay hidden" id="levelNextModal">
+    <div class="modal-box">
+      <div style="font-size: 65px;">🏆✨</div>
+      <div style="font-size: 22px; font-weight: bold; color: #15803d; margin: 8px 0;" id="modalTitle">恭喜完成！</div>
+      <div style="font-size: 15px; color: #334155; margin-bottom: 18px;" id="modalDesc">太棒了！你已成功答對全部 5 條題目！</div>
+      <div style="display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
+        <a href="../index.html" class="modal-btn-secondary">🏠 返回選單</a>
+        <button class="modal-btn" id="nextLevelBtn">前往下一個關卡 ➔</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Pure Cantonese Speech Synthesis with Emoji Filter
+  function speakCantonese(text) {
+    if (!('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    const cleanText = text
+      .replace(/<[^>]*>/g, '')
+      .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')
+      .trim();
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.lang = 'zh-HK';
+    utterance.rate = 0.85;
+    window.speechSynthesis.speak(utterance);
+  }
+
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  let audio = null;
+  function playSound(type) {
+    if (!audio) audio = new AudioCtx();
+    const osc = audio.createOscillator(), g = audio.createGain();
+    osc.connect(g); g.connect(audio.destination);
+    const now = audio.currentTime;
+    if (type === 'pop') {
+      osc.frequency.setValueAtTime(450, now); osc.frequency.exponentialRampToValueAtTime(850, now + 0.08);
+      g.gain.setValueAtTime(0.2, now); osc.start(now); osc.stop(now + 0.08);
+    } else if (type === 'wrong') {
+      osc.type = 'sawtooth'; osc.frequency.setValueAtTime(200, now); osc.frequency.setValueAtTime(150, now + 0.15);
+      g.gain.setValueAtTime(0.3, now); osc.start(now); osc.stop(now + 0.25);
+    } else if (type === 'win') {
+      [523, 659, 783].forEach((f, i) => osc.frequency.setValueAtTime(f, now + i * 0.1));
+      g.gain.setValueAtTime(0.3, now); osc.start(now); osc.stop(now + 0.4);
+    }
+  }
+
+  let progression = 1;
+  let subLevel = 1;
+  let qIndex = 0;
+  let currentQ = {};
+  let cantoneseVoiceText = '';
+  let isAnswerLocked = false;
+  let lastQKey = '';
+
+  // Character Navigation State
+  let charPos = { r: 1, c: 1 };
+  let charFacingAngle = 0;
+
+  function changeProgression(val) { progression = parseInt(val); qIndex = 0; lastQKey = ''; initQuestion(); }
+  function changeSubLevel(val) { subLevel = parseInt(val); qIndex = 0; lastQKey = ''; initQuestion(); }
+
+  function updateDots() {
+    for (let i = 1; i <= 5; i++) {
+      const dot = document.getElementById(`dot-${i}`);
+      dot.className = 'progress-dot';
+      if (i - 1 < qIndex) dot.classList.add('completed');
+      else if (i - 1 === qIndex) dot.classList.add('active');
+    }
+  }
+
+  // String Match Normalizer for Directions
+  function isDirMatch(userVal, targetVal) {
+    if (!userVal || !targetVal) return false;
+    const u = userVal.replace(/[^\u4e00-\u9fa5]/g, '').replace(/[邊面]/g, '').trim();
+    const t = targetVal.replace(/[^\u4e00-\u9fa5]/g, '').replace(/[邊面]/g, '').trim();
+    return u === t || u.includes(t) || t.includes(u);
+  }
+
+  function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5); }
+
+  // Non-repeating Question Selector Logic
+  function getNextNonRepeatingQ(pool, keyFn) {
+    let candidates = pool.filter(q => keyFn(q) !== lastQKey);
+    if (candidates.length === 0) candidates = pool;
+    const chosen = shuffle(candidates)[0];
+    lastQKey = keyFn(chosen);
+    return chosen;
+  }
+
+  // Datasets - 🪑 is correctly defined as 椅子 (Chair)
+  const poolProg1 = [
+    { icon: '🍎', itemZh: '🍎 蘋果', itemEn: 'Apple', refIcon: '🪑', refZh: '🪑 椅子', refEn: 'Chair', dirZh: '上方', dirEn: 'Top' },
+    { icon: '⚽', itemZh: '⚽ 足球', itemEn: 'Ball', refIcon: '🪑', refZh: '🪑 椅子', refEn: 'Chair', dirZh: '下方', dirEn: 'Bottom' },
+    { icon: '🍰', itemZh: '🍰 蛋糕', itemEn: 'Cake', refIcon: '🍽️', refZh: '🍽️ 盤子', refEn: 'Plate', dirZh: '上方', dirEn: 'Top' },
+    { icon: '🥿', itemZh: '🥿 鞋子', itemEn: 'Shoes', refIcon: '🛏️', refZh: '🛏️ 床舖', refEn: 'Bed', dirZh: '下方', dirEn: 'Bottom' },
+    { icon: '🐱', itemZh: '🐱 貓咪', itemEn: 'Cat', refIcon: '🪑', refZh: '🪑 椅子', refEn: 'Chair', dirZh: '上方', dirEn: 'Top' },
+    { icon: '📦', itemZh: '📦 箱子', itemEn: 'Box', refIcon: '🛏️', refZh: '🛏️ 床舖', refEn: 'Bed', dirZh: '下方', dirEn: 'Bottom' }
+  ];
+
+  const poolProg2 = [
+    { icon: '🥄', itemZh: '🥄 湯匙', itemEn: 'Spoon', refIcon: '🥣', refZh: '🥣 碗', refEn: 'Bowl', dirZh: '右邊', dirEn: 'Right' },
+    { icon: '🥤', itemZh: '🥤 水壺', itemEn: 'Bottle', refIcon: '🎒', refZh: '🎒 書包', refEn: 'Bag', dirZh: '左邊', dirEn: 'Left' },
+    { icon: '✏️', itemZh: '✏️ 鉛筆', itemEn: 'Pencil', refIcon: '📓', refZh: '📓 筆記本', refEn: 'Notebook', dirZh: '左邊', dirEn: 'Left' },
+    { icon: '🥛', itemZh: '🥛 牛奶', itemEn: 'Milk', refIcon: '🍞', refZh: '🍞 麵包', refEn: 'Bread', dirZh: '右邊', dirEn: 'Right' }
+  ];
+
+  const poolProg3 = [
+    { icon: '🌳 公園', targetZh: '🌳 公園', targetEn: 'Park', dirZh: '東邊', dirEn: 'East', r: 1, c: 2 },
+    { icon: '🏥 醫院', targetZh: '🏥 醫院', targetEn: 'Hospital', dirZh: '南邊', dirEn: 'South', r: 2, c: 1 },
+    { icon: '🏪 超市', targetZh: '🏪 超市', targetEn: 'Supermarket', dirZh: '西邊', dirEn: 'West', r: 1, c: 0 },
+    { icon: '🚒 消防局', targetZh: '🚒 消防局', targetEn: 'Fire Station', dirZh: '北邊', dirEn: 'North', r: 0, c: 1 }
+  ];
+
+  const poolProg4 = [
+    { icon: '🎡 摩天輪', targetZh: '🎡 摩天輪', targetEn: 'Ferris Wheel', dirZh: '東北邊', dirEn: 'Northeast', r: 0, c: 2 },
+    { icon: '🚀 火箭塔', targetZh: '🚀 火箭塔', targetEn: 'Rocket', dirZh: '西南邊', dirEn: 'Southwest', r: 2, c: 0 },
+    { icon: '⛵ 帆船', targetZh: '⛵ 帆船', targetEn: 'Boat', dirZh: '東南邊', dirEn: 'Southeast', r: 2, c: 2 },
+    { icon: '🏰 城堡', targetZh: '🏰 城堡', targetEn: 'Castle', dirZh: '西北邊', dirEn: 'Northwest', r: 0, c: 0 }
+  ];
+
+  function initQuestion() {
+    isAnswerLocked = false;
+    document.getElementById('progSelect').value = progression;
+    document.getElementById('levelSelect').value = subLevel;
+    document.getElementById('levelNextModal').classList.add('hidden');
+    document.getElementById('feedback').innerText = '';
+    updateDots();
+
+    const spatialArea = document.getElementById('spatialArea');
+    const mapArea = document.getElementById('mapArea');
+    const compassBoard = document.getElementById('compassBoard');
+    const northIndicator = document.getElementById('northIndicator');
+    const optionsFlex = document.getElementById('optionsFlex');
+
+    let zhText = '', enText = '';
+
+    if (progression >= 3) northIndicator.classList.remove('hidden');
+    else northIndicator.classList.add('hidden');
+
+    if (progression === 1) {
+      currentQ = getNextNonRepeatingQ(poolProg1, q => q.itemZh + q.dirZh);
+      mapArea.classList.add('hidden'); compassBoard.classList.add('hidden'); spatialArea.classList.remove('hidden');
+
+      if (subLevel === 1) {
+        zhText = `請把 ${currentQ.itemZh} 拖到 ${currentQ.refZh} 的 <span class="kw-highlight">${currentQ.dirZh}</span>`;
+        enText = `Please drag ${currentQ.itemEn} to the <span class="kw-highlight">${currentQ.dirEn}</span> of ${currentQ.refEn}.`;
+        cantoneseVoiceText = `請把 ${currentQ.itemZh} 拖到 ${currentQ.refZh} 的 ${currentQ.dirZh}`;
+
+        spatialArea.className = 'spatial-workspace vertical';
+        spatialArea.innerHTML = `
+          <div class="drop-zone" id="zoneTop" data-expected="上方">
+            <span class="zone-hint">📥 上方</span>
+          </div>
+          <div class="ref-object-icon">${currentQ.refIcon}</div>
+          <div class="drop-zone" id="zoneBottom" data-expected="下方">
+            <span class="zone-hint">📥 下方</span>
+          </div>
+        `;
+
+        optionsFlex.innerHTML = `
+          <div class="draggable-item" id="dragItem" data-val="${currentQ.itemZh}">
+            <span>${currentQ.icon}</span>
+          </div>
+        `;
+      } else if (subLevel === 2) {
+        // Level 2: TTS reads "蘋果在椅子的上方"
+        zhText = `請拖曳位置標籤：表示 ${currentQ.itemZh} 在 ${currentQ.refZh} 的位置`;
+        enText = `Please drag the label to show the position of ${currentQ.itemEn}.`;
+        cantoneseVoiceText = `${currentQ.itemZh}在${currentQ.refZh}的${currentQ.dirZh}`;
+
+        const isTop = currentQ.dirZh === '上方';
+        spatialArea.className = 'spatial-workspace vertical';
+        spatialArea.innerHTML = `
+          ${isTop ? `
+            <div class="drop-zone overlay-dropzone" id="zoneSingle" data-expected="${currentQ.dirZh}">
+              <div style="font-size:60px; opacity:0.85;">${currentQ.icon}</div>
+              <span class="zone-hint">📥 放置標籤 Drop Label</span>
+            </div>
+            <div class="ref-object-icon">${currentQ.refIcon}</div>
+          ` : `
+            <div class="ref-object-icon">${currentQ.refIcon}</div>
+            <div class="drop-zone overlay-dropzone" id="zoneSingle" data-expected="${currentQ.dirZh}">
+              <div style="font-size:60px; opacity:0.85;">${currentQ.icon}</div>
+              <span class="zone-hint">📥 放置標籤 Drop Label</span>
+            </div>
+          `}
+        `;
+
+        optionsFlex.innerHTML = shuffle(['上方 / Top', '下方 / Bottom']).map((lbl, i) => `
+          <div class="draggable-item label-style" id="dragLabel_${i}" data-val="${lbl.split(' ')[0]}">
+            ${lbl}
+          </div>
+        `).join('');
+      } else {
+        zhText = `請回答：${currentQ.itemZh} 在 ${currentQ.refZh} 的 <span class="kw-highlight">哪裡？</span>`;
+        enText = `Where is ${currentQ.itemEn} relative to ${currentQ.refEn}?`;
+        cantoneseVoiceText = `${currentQ.itemZh} 在 ${currentQ.refZh} 的邊度？`;
+
+        const isTop = currentQ.dirZh === '上方';
+        spatialArea.className = 'spatial-workspace vertical';
+        spatialArea.innerHTML = `
+          ${isTop ? `<div style="font-size:65px;">${currentQ.icon}</div>` : ''}
+          <div class="ref-object-icon">${currentQ.refIcon}</div>
+          ${!isTop ? `<div style="font-size:65px;">${currentQ.icon}</div>` : ''}
+        `;
+
+        optionsFlex.innerHTML = ['上方 / Top', '下方 / Bottom'].map(opt => `
+          <button class="option-btn" onclick="handleChoiceClick('${opt.split(' ')[0]}', '${opt.split(' ')[0]}')">${opt}</button>
+        `).join('');
+      }
+    } else if (progression === 2) {
+      currentQ = getNextNonRepeatingQ(poolProg2, q => q.itemZh + q.dirZh);
+      mapArea.classList.add('hidden'); compassBoard.classList.add('hidden'); spatialArea.classList.remove('hidden');
+
+      if (subLevel === 1) {
+        zhText = `請把 ${currentQ.itemZh} 拖到 ${currentQ.refZh} 的 <span class="kw-highlight">${currentQ.dirZh}</span>`;
+        enText = `Please drag ${currentQ.itemEn} to the <span class="kw-highlight">${currentQ.dirEn}</span> of ${currentQ.refEn}.`;
+        cantoneseVoiceText = `請把 ${currentQ.itemZh} 拖到 ${currentQ.refZh} 的 ${currentQ.dirZh}`;
+
+        spatialArea.className = 'spatial-workspace horizontal';
+        spatialArea.innerHTML = `
+          <div class="drop-zone" id="zoneLeft" data-expected="左邊">
+            <span class="zone-hint">📥 左邊</span>
+          </div>
+          <div class="ref-object-icon">${currentQ.refIcon}</div>
+          <div class="drop-zone" id="zoneRight" data-expected="右邊">
+            <span class="zone-hint">📥 右邊</span>
+          </div>
+        `;
+
+        optionsFlex.innerHTML = `
+          <div class="draggable-item" id="dragItem" data-val="${currentQ.itemZh}">
+            <span>${currentQ.icon}</span>
+          </div>
+        `;
+      } else if (subLevel === 2) {
+        // Level 2: TTS reads "湯匙在碗的右邊"
+        zhText = `請拖曳位置標籤：表示 ${currentQ.itemZh} 在 ${currentQ.refZh} 的位置`;
+        enText = `Please drag the label to show the direction of ${currentQ.itemEn}.`;
+        cantoneseVoiceText = `${currentQ.itemZh}在${currentQ.refZh}的${currentQ.dirZh}`;
+
+        const isLeft = currentQ.dirZh === '左邊';
+        spatialArea.className = 'spatial-workspace horizontal';
+        spatialArea.innerHTML = `
+          ${isLeft ? `
+            <div class="drop-zone overlay-dropzone" id="zoneSingle" data-expected="${currentQ.dirZh}">
+              <div style="font-size:60px; opacity:0.85;">${currentQ.icon}</div>
+              <span class="zone-hint">📥 放置標籤 Drop Label</span>
+            </div>
+            <div class="ref-object-icon">${currentQ.refIcon}</div>
+          ` : `
+            <div class="ref-object-icon">${currentQ.refIcon}</div>
+            <div class="drop-zone overlay-dropzone" id="zoneSingle" data-expected="${currentQ.dirZh}">
+              <div style="font-size:60px; opacity:0.85;">${currentQ.icon}</div>
+              <span class="zone-hint">📥 放置標籤 Drop Label</span>
+            </div>
+          `}
+        `;
+
+        optionsFlex.innerHTML = `
+          <div class="draggable-item label-style" id="lbl1" data-val="左邊">左邊 / Left</div>
+          <div class="draggable-item label-style" id="lbl2" data-val="右邊">右邊 / Right</div>
+        `;
+      } else {
+        zhText = `請回答：${currentQ.itemZh} 在 ${currentQ.refZh} 的 <span class="kw-highlight">哪一邊？</span>`;
+        enText = `Which side is ${currentQ.itemEn} relative to ${currentQ.refEn}?`;
+        cantoneseVoiceText = `${currentQ.itemZh} 在 ${currentQ.refZh} 的邊個方向？`;
+
+        const isLeft = currentQ.dirZh === '左邊';
+        spatialArea.className = 'spatial-workspace horizontal';
+        spatialArea.innerHTML = `
+          ${isLeft ? `<div style="font-size:65px;">${currentQ.icon}</div>` : ''}
+          <div class="ref-object-icon">${currentQ.refIcon}</div>
+          ${!isLeft ? `<div style="font-size:65px;">${currentQ.icon}</div>` : ''}
+        `;
+
+        optionsFlex.innerHTML = `
+          <button class="option-btn" onclick="handleChoiceClick('左邊', '左邊')">👈 左邊 / Left</button>
+          <button class="option-btn" onclick="handleChoiceClick('右邊', '右邊')">👉 右邊 / Right</button>
+        `;
+      }
+    } else if (progression === 3 || progression === 4) {
+      const pool = progression === 3 ? poolProg3 : poolProg4;
+      currentQ = getNextNonRepeatingQ(pool, q => q.targetZh);
+      spatialArea.classList.add('hidden'); compassBoard.classList.add('hidden'); mapArea.classList.remove('hidden');
+
+      renderMapGrid3x3(currentQ);
+
+      if (subLevel === 1) {
+        zhText = `請把 ${currentQ.targetZh} 拖到 🏫 學校的 <span class="kw-highlight">${currentQ.dirZh}</span>`;
+        enText = `Please drag ${currentQ.targetEn} to the <span class="kw-highlight">${currentQ.dirEn}</span> of the school.`;
+        cantoneseVoiceText = `請把 ${currentQ.targetZh} 拖到學校的 ${currentQ.dirZh}`;
+
+        optionsFlex.innerHTML = `
+          <div class="draggable-item" id="dragMapItem" data-val="${currentQ.dirZh}">
+            <span style="font-size:45px;">${currentQ.targetZh.split(' ')[0]}</span>
+          </div>
+        `;
+      } else if (subLevel === 2) {
+        // Level 2: TTS reads "公園在學校的東邊"
+        zhText = `請把方向標籤拖到 <span class="kw-highlight">${currentQ.targetZh}</span> 的位置上`;
+        enText = `Please drag the label onto ${currentQ.targetEn}.`;
+        cantoneseVoiceText = `${currentQ.targetZh}在學校的${currentQ.dirZh}`;
+
+        const dirs = progression === 3 ? ['東邊 / East', '南邊 / South', '西邊 / West', '北邊 / North'] : ['東北 / NE', '東南 / SE', '西北 / NW', '西南 / SW'];
+        optionsFlex.innerHTML = shuffle(dirs).map((d, i) => `
+          <div class="draggable-item label-style" id="dragDir_${i}" data-val="${d.split(' ')[0]}">
+            ${d}
+          </div>
+        `).join('');
+      } else {
+        zhText = `請問：${currentQ.targetZh} 在 🏫 學校的 <span class="kw-highlight">哪個方位？</span>`;
+        enText = `Which direction is ${currentQ.targetEn} from the school?`;
+        cantoneseVoiceText = `${currentQ.targetZh} 在學校的邊個方位？`;
+
+        const dirs = progression === 3 ? ['東 / East', '南 / South', '西 / West', '北 / North'] : ['東北 / NE', '東南 / SE', '西北 / NW', '西南 / SW', '東 / East', '南 / South', '西 / West', '北 / North'];
+        optionsFlex.innerHTML = dirs.map(d => `
+          <button class="option-btn" onclick="handleChoiceClick('${d.split(' ')[0]}', '${d.split(' ')[0]}')">🧭 ${d}</button>
+        `).join('');
+      }
+    } else if (progression === 5) {
+      spatialArea.classList.add('hidden'); mapArea.classList.add('hidden'); compassBoard.classList.remove('hidden');
+
+      if (subLevel === 1) {
+        zhText = `請將 <span class="kw-highlight">4 個方位標籤</span> 拖曳填入方向板中`;
+        enText = `Please drag <span class="kw-highlight">4 direction labels</span> into the board.`;
+        cantoneseVoiceText = `請將四個方位標籤拖曳填入方向板中`;
+
+        renderCompassBoard(4);
+        optionsFlex.innerHTML = shuffle(['北 / North', '西 / West', '東 / East', '南 / South']).map((d, i) => `
+          <div class="draggable-item label-style" id="cDir_${i}" data-val="${d.split(' ')[0]}">
+            ${d}
+          </div>
+        `).join('');
+      } else if (subLevel === 2) {
+        zhText = `請將 <span class="kw-highlight">8 個方位標籤</span> 拖曳填入方向板中`;
+        enText = `Please drag the <span class="kw-highlight">8 direction labels</span> into the board.`;
+        cantoneseVoiceText = `請將八個方位標籤拖曳填入方向板中`;
+
+        renderCompassBoard(8);
+        const dirs8 = ['北 / North', '西 / West', '東 / East', '南 / South', '東北 / NE', '東南 / SE', '西北 / NW', '西南 / SW'];
+        optionsFlex.innerHTML = shuffle(dirs8).map((d, i) => `
+          <div class="draggable-item label-style" id="cDir_${i}" data-val="${d.split(' ')[0]}">
+            ${d}
+          </div>
+        `).join('');
+      } else {
+        compassBoard.classList.add('hidden'); mapArea.classList.remove('hidden');
+        currentQ = getNextNonRepeatingQ(poolProg3, q => q.targetZh);
+        renderMapGrid3x3(currentQ);
+
+        zhText = `請問：${currentQ.targetZh} 在 🏫 學校的 <span class="kw-highlight">哪一面？</span>`;
+        enText = `Which direction is ${currentQ.targetEn} from the school?`;
+        cantoneseVoiceText = `${currentQ.targetZh} 在學校的邊一面？`;
+
+        optionsFlex.innerHTML = ['東 / East', '南 / South', '西 / West', '北 / North'].map(d => `
+          <button class="option-btn" onclick="handleChoiceClick('${d.split(' ')[0]}', '${d.split(' ')[0]}面')">${d}</button>
+        `).join('');
+      }
+    } else if (progression === 6) {
+      spatialArea.classList.add('hidden'); compassBoard.classList.add('hidden'); mapArea.classList.remove('hidden');
+      charPos = { r: 2, c: 2 };
+      charFacingAngle = 0;
+
+      if (subLevel === 1) {
+        currentQ = getNextNonRepeatingQ(poolProg3, q => q.targetZh);
+        charPos = { r: 1, c: 1 };
+        renderMapGrid3x3(currentQ, true);
+
+        zhText = `請按按鈕指引 🚶 走到 <span class="kw-highlight">${currentQ.targetZh}</span>！`;
+        enText = `Use arrow buttons to guide 🚶 to <span class="kw-highlight">${currentQ.targetEn}</span>!`;
+        cantoneseVoiceText = `請按按鈕指引小主角走到 ${currentQ.targetZh}`;
+
+        optionsFlex.innerHTML = `
+          <div class="nav-pad-4">
+            <div></div>
+            <button class="nav-btn" onclick="moveWalker(-1, 0, 0)">⬆️ 北 (North)</button>
+            <div></div>
+            <button class="nav-btn" onclick="moveWalker(0, -1, 270)">⬅️ 西 (West)</button>
+            <button class="nav-btn" onclick="moveWalker(1, 0, 180)">⬇️ 南 (South)</button>
+            <button class="nav-btn" onclick="moveWalker(0, 1, 90)">➡️ 東 (East)</button>
+          </div>
+        `;
+      } else if (subLevel === 2) {
+        const exits = [
+          { name: '東出口 / East Exit', nameEn: 'EAST Exit', r: 2, c: 4, angle: 90, key: '東' },
+          { name: '南出口 / South Exit', nameEn: 'SOUTH Exit', r: 4, c: 2, angle: 180, key: '南' },
+          { name: '西出口 / West Exit', nameEn: 'WEST Exit', r: 2, c: 0, angle: 270, key: '西' },
+          { name: '北出口 / North Exit', nameEn: 'NORTH Exit', r: 0, c: 2, angle: 0, key: '北' }
+        ];
+        currentQ = getNextNonRepeatingQ(exits, q => q.name);
+        charPos = { r: 2, c: 2 };
+        renderMapGrid5x5(currentQ);
+
+        zhText = `請指引 🚶 走到 <span class="kw-highlight">${currentQ.name}</span>！`;
+        enText = `Please guide 🚶 to the <span class="kw-highlight">${currentQ.nameEn}</span>!`;
+        cantoneseVoiceText = `請指引小主角走到 ${currentQ.name.split(' ')[0]}`;
+
+        optionsFlex.innerHTML = `
+          <div class="nav-pad-4">
+            <div></div>
+            <button class="nav-btn" onclick="moveWalker(-1, 0, 0)">⬆️ 北 (North)</button>
+            <div></div>
+            <button class="nav-btn" onclick="moveWalker(0, -1, 270)">⬅️ 西 (West)</button>
+            <button class="nav-btn" onclick="moveWalker(1, 0, 180)">⬇️ 南 (South)</button>
+            <button class="nav-btn" onclick="moveWalker(0, 1, 90)">➡️ 東 (East)</button>
+          </div>
+        `;
+      } else {
+        const exits = [
+          { name: '東北出口 / NE Exit', nameEn: 'NORTHEAST Exit', r: 0, c: 4, angle: 45, key: '東北' },
+          { name: '東南出口 / SE Exit', nameEn: 'SOUTHEAST Exit', r: 4, c: 4, angle: 135, key: '東南' },
+          { name: '西北出口 / NW Exit', nameEn: 'NORTHWEST Exit', r: 0, c: 0, angle: 315, key: '西北' },
+          { name: '西南出口 / SW Exit', nameEn: 'SOUTHWEST Exit', r: 4, c: 0, angle: 225, key: '西南' }
+        ];
+        currentQ = getNextNonRepeatingQ(exits, q => q.name);
+        charPos = { r: 2, c: 2 };
+        renderMapGrid5x5(currentQ);
+
+        zhText = `請點擊方位按鈕，指引 🚶 走到 <span class="kw-highlight">${currentQ.name}</span>！`;
+        enText = `Click direction buttons to guide 🚶 to <span class="kw-highlight">${currentQ.nameEn}</span>!`;
+        cantoneseVoiceText = `請點擊方位按鈕，指引小主角走到 ${currentQ.name.split(' ')[0]}`;
+
+        optionsFlex.innerHTML = `
+          <div class="nav-pad-8">
+            <button class="nav-btn" onclick="moveWalkerStep(-1, -1, 315)">西北 / NW</button>
+            <button class="nav-btn" onclick="moveWalkerStep(-1, 0, 0)">北 / North</button>
+            <button class="nav-btn" onclick="moveWalkerStep(-1, 1, 45)">東北 / NE</button>
+            <button class="nav-btn" onclick="moveWalkerStep(0, -1, 270)">西 / West</button>
+            <div style="text-align:center; font-size:11px; font-weight:bold; color:#16a34a; margin:auto;">中心</div>
+            <button class="nav-btn" onclick="moveWalkerStep(0, 1, 90)">東 / East</button>
+            <button class="nav-btn" onclick="moveWalkerStep(1, -1, 225)">西南 / SW</button>
+            <button class="nav-btn" onclick="moveWalkerStep(1, 0, 180)">南 / South</button>
+            <button class="nav-btn" onclick="moveWalkerStep(1, 1, 135)">東南 / SE</button>
+          </div>
+        `;
+      }
+    }
+
+    document.getElementById('textZh').innerHTML = zhText;
+    document.getElementById('textEn').innerHTML = enText;
+
+    speakCantonese(cantoneseVoiceText);
+    setupPointerDrag();
+  }
+
+  function renderMapGrid3x3(q, showWalker = false) {
+    const mapArea = document.getElementById('mapArea');
+    mapArea.className = 'map-grid map-grid-3x3'; mapArea.innerHTML = '';
+    for (let r = 0; r < 3; r++) {
+      for (let c = 0; c < 3; c++) {
+        const cell = document.createElement('div');
+        cell.className = 'map-cell';
+        if (showWalker && r === charPos.r && c === charPos.c) {
+          cell.innerHTML = `<span class="walker-char" style="transform: rotate(${charFacingAngle}deg);">🚶</span>`;
+        } else if (r === 1 && c === 1) {
+          cell.classList.add('center-cell'); cell.innerHTML = `🏫`;
+        } else if (r === q.r && c === q.c) {
+          cell.classList.add('drop-zone');
+          cell.id = "zoneSingle"; cell.dataset.expected = q.dirZh;
+          cell.innerHTML = `${q.icon.split(' ')[0]}`;
+        }
+        mapArea.appendChild(cell);
+      }
+    }
+  }
+
+  function renderMapGrid5x5(q) {
+    const mapArea = document.getElementById('mapArea');
+    mapArea.className = 'map-grid map-grid-5x5'; mapArea.innerHTML = '';
+    for (let r = 0; r < 5; r++) {
+      for (let c = 0; c < 5; c++) {
+        const cell = document.createElement('div');
+        cell.className = 'map-cell';
+        if (r === charPos.r && c === charPos.c) {
+          cell.innerHTML = `<span class="walker-char" style="transform: rotate(${charFacingAngle}deg);">🚶</span>`;
+        } else if (r === 2 && c === 2) {
+          cell.classList.add('center-cell'); cell.innerHTML = `🏫`;
+        } else if (r === q.r && c === q.c) {
+          cell.classList.add('exit-cell'); cell.innerHTML = `🚪<br>${q.name.split(' ')[0]}`;
+        }
+        mapArea.appendChild(cell);
+      }
+    }
+  }
+
+  // Perfectly Aligned Compass Board Grid Layout
+  function renderCompassBoard(count) {
+    const board = document.getElementById('compassBoard');
+    board.innerHTML = '';
+    const slots4 = [
+      { r: 0, c: 1, val: '北' }, { r: 1, c: 0, val: '西' },
+      { r: 1, c: 2, val: '東' }, { r: 2, c: 1, val: '南' }
+    ];
+    const slots8 = [
+      { r: 0, c: 0, val: '西北' }, { r: 0, c: 1, val: '北' }, { r: 0, c: 2, val: '東北' },
+      { r: 1, c: 0, val: '西' },   { r: 1, c: 2, val: '東' },
+      { r: 2, c: 0, val: '西南' }, { r: 2, c: 1, val: '南' }, { r: 2, c: 2, val: '東南' }
+    ];
+    const slots = count === 4 ? slots4 : slots8;
+
+    for (let r = 0; r < 3; r++) {
+      for (let c = 0; c < 3; c++) {
+        const cell = document.createElement('div');
+        if (r === 1 && c === 1) {
+          cell.className = 'compass-cell-slot center-compass'; cell.innerText = '🧭';
+        } else {
+          const match = slots.find(s => s.r === r && s.c === c);
+          if (match) {
+            cell.className = 'drop-zone compass-cell-slot';
+            cell.id = `cSlot_${r}_${c}`;
+            cell.dataset.expected = match.val;
+            cell.innerText = '?';
+          } else {
+            cell.style.visibility = 'hidden';
+          }
+        }
+        board.appendChild(cell);
+      }
+    }
+  }
+
+  function moveWalker(dr, dc, angle) {
+    moveWalkerStep(dr, dc, angle);
+  }
+
+  function moveWalkerStep(dr, dc, angle) {
+    if (isAnswerLocked) return;
+    const maxBound = subLevel === 1 ? 3 : 5;
+    const nr = charPos.r + dr;
+    const nc = charPos.c + dc;
+    charFacingAngle = angle;
+
+    if (nr >= 0 && nr < maxBound && nc >= 0 && nc < maxBound) {
+      charPos.r = nr; charPos.c = nc;
+      playSound('pop');
+      if (subLevel === 1) renderMapGrid3x3(currentQ, true);
+      else renderMapGrid5x5(currentQ);
+
+      if (charPos.r === currentQ.r && charPos.c === currentQ.c) {
+        triggerCorrectSequence();
+      }
+    }
+  }
+
+  function replayVoice() {
+    if (cantoneseVoiceText) speakCantonese(cantoneseVoiceText);
+  }
+
+  // Pointer Drag Engine with Real-Time Zone Resolution
+  function setupPointerDrag() {
+    const draggables = document.querySelectorAll('.draggable-item');
+
+    draggables.forEach(item => {
+      let isDragging = false;
+      let startX, startY;
+
+      item.onpointerdown = (e) => {
+        if (isAnswerLocked) return;
+        e.preventDefault();
+        isDragging = true;
+        startX = e.clientX; startY = e.clientY;
+        item.setPointerCapture(e.pointerId);
+        item.style.position = 'relative';
+        item.style.zIndex = '1000';
+        playSound('pop');
+      };
+
+      item.onpointermove = (e) => {
+        if (!isDragging) return;
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        item.style.transform = `translate(${dx}px, ${dy}px)`;
+      };
+
+      item.onpointerup = (e) => {
+        if (!isDragging) return;
+        isDragging = false;
+        item.releasePointerCapture(e.pointerId);
+        item.style.transform = '';
+        item.style.position = '';
+        item.style.zIndex = '';
+
+        const dropZones = document.querySelectorAll('.drop-zone');
+        let droppedOnZone = false;
+
+        dropZones.forEach(zone => {
+          const rect = zone.getBoundingClientRect();
+          if (e.clientX >= rect.left && e.clientX <= rect.right &&
+              e.clientY >= rect.top && e.clientY <= rect.bottom) {
+            droppedOnZone = true;
+            const zoneExpected = zone.dataset.expected;
+            const draggedVal = item.dataset.val;
+
+            let isCorrect = false;
+            if (progression === 5 && subLevel <= 2) {
+              isCorrect = isDirMatch(draggedVal, zoneExpected);
+            } else if (subLevel === 1) {
+              isCorrect = isDirMatch(zoneExpected, currentQ.dirZh);
+            } else {
+              isCorrect = isDirMatch(draggedVal, currentQ.dirZh);
+            }
+
+            if (isCorrect) {
+              // Placed Correctly: Snap & Highlight Green!
+              zone.innerHTML = item.innerHTML;
+              zone.classList.add('correct-glow');
+              item.style.display = 'none';
+
+              if (progression === 5 && subLevel <= 2) {
+                checkBoardCompletion();
+              } else {
+                triggerCorrectSequence(zone);
+              }
+            } else {
+              // Incorrect Placement: Flash Red Shake!
+              playSound('wrong');
+              zone.classList.add('wrong-shake');
+              document.getElementById('feedback').className = 'feedback wrong';
+              document.getElementById('feedback').innerText = '❌ 不對喔，再試一次！ Try Again!';
+              setTimeout(() => zone.classList.remove('wrong-shake'), 800);
+            }
+          }
+        });
+
+        if (!droppedOnZone) playSound('wrong');
+      };
+    });
+  }
+
+  function checkBoardCompletion() {
+    const hiddenItems = document.querySelectorAll('.draggable-item[style*="display: none"]');
+    const totalItems = document.querySelectorAll('.draggable-item').length;
+    if (hiddenItems.length === totalItems) {
+      triggerCorrectSequence();
+    }
+  }
+
+  function handleChoiceClick(userVal, speakTextVal) {
+    if (isAnswerLocked) return;
+    speakCantonese(speakTextVal);
+    if (isDirMatch(userVal, currentQ.dirZh)) {
+      triggerCorrectSequence();
+    } else {
+      playSound('wrong');
+      document.getElementById('feedback').className = 'feedback wrong';
+      document.getElementById('feedback').innerText = '❌ 不對喔，再試一次！ Try Again!';
+    }
+  }
+
+  function triggerCorrectSequence(matchedZone = null) {
+    if (isAnswerLocked) return;
+    isAnswerLocked = true;
+    playSound('win');
+    
+    if (matchedZone) {
+      matchedZone.classList.add('correct-glow');
+    }
+
+    document.getElementById('feedback').className = 'feedback correct';
+    document.getElementById('feedback').innerText = '🎉 太棒了！答對了！ Correct!';
+
+    // Hold visual result state for 1.5 seconds so student clearly sees success
+    setTimeout(() => {
+      qIndex++;
+      if (qIndex >= 5) {
+        handleLevelCompletion();
+      } else {
+        initQuestion();
+      }
+    }, 1500);
+  }
+
+  function handleLevelCompletion() {
+    playSound('win');
+    speakCantonese('恭喜你完成關卡！');
+    const titleEl = document.getElementById('modalTitle');
+    const descEl = document.getElementById('modalDesc');
+    const nextBtn = document.getElementById('nextLevelBtn');
+
+    titleEl.innerText = `🏆 恭喜完成！ Completed!`;
+    descEl.innerText = `太棒了！你已成功完成 5 條題目！ Excellent!`;
+    
+    nextBtn.innerText = '前往下一個關卡 ➔ Next Level';
+    nextBtn.onclick = () => {
+      if (subLevel < 3) subLevel++;
+      else if (progression < 6) { progression++; subLevel = 1; }
+      else { progression = 1; subLevel = 1; }
+      qIndex = 0;
+      initQuestion();
+    };
+
+    document.getElementById('levelNextModal').classList.remove('hidden');
+  }
+
+  initQuestion();
+</script>
+</body>
+</html>

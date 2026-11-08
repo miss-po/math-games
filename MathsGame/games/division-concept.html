@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>除法平分大冒險</title>
+<style>
+  * { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
+  html, body {
+    width: 100vw; height: 100dvh; margin: 0; padding: 4px;
+    font-family: system-ui, -apple-system, sans-serif;
+    background-color: #f0f9ff; display: flex; flex-direction: column; align-items: center; overflow: hidden;
+  }
+  .game-container {
+    width: 100%; max-width: 650px; height: 100%; max-height: 100dvh;
+    display: flex; flex-direction: column; gap: 3px; position: relative; overflow: hidden;
+  }
+
+  /* Header Controls */
+  .header {
+    flex: 0 0 auto; display: flex; justify-content: space-between; align-items: center; gap: 4px;
+    background: #ffffff; padding: 4px 8px; border-radius: 12px; border: 2px solid #7dd3fc; flex-wrap: wrap;
+  }
+  .back-btn {
+    background: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 8px;
+    font-size: 12px; font-weight: bold; text-decoration: none; box-shadow: 0 2px 0 #b91c1c; white-space: nowrap;
+  }
+  .level-select {
+    background: #0284c7; color: white; border: none; padding: 4px 8px; border-radius: 8px;
+    font-weight: bold; font-size: 13px; cursor: pointer; outline: none; box-shadow: 0 2px 0 #0369a1;
+  }
+
+  /* Progress Dots */
+  .progress-container { display: flex; align-items: center; gap: 4px; }
+  .progress-dot {
+    width: 20px; height: 20px; border-radius: 50%; background: #e2e8f0; border: 2px solid #cbd5e1;
+    display: flex; align-items: center; justify-content: center; font-size: 11px; color: #64748b; font-weight: bold;
+  }
+  .progress-dot.active { background: #bae6fd; border-color: #0284c7; color: #0369a1; }
+  .progress-dot.completed { background: #22c55e; border-color: #15803d; color: white; }
+
+  .instruction { flex: 0 0 auto; font-size: 16px; font-weight: bold; color: #0369a1; text-align: center; margin: 1px 0; }
+
+  /* Main Stage Card for Canvas */
+  .stage-card {
+    flex: 1 1 auto; min-height: 120px; width: 100%; background: #ffffff; border: 2px solid #7dd3fc;
+    border-radius: 12px; position: relative; touch-action: none; overflow: hidden;
+    display: flex; justify-content: center; align-items: center;
+  }
+  .stage-card.compact { flex: 1 1 160px; min-height: 120px; max-height: 220px; }
+  canvas { width: 100%; height: 100%; display: block; }
+
+  /* Level 3 Large Question Banner */
+  .level3-div-banner {
+    font-size: 34px; font-weight: bold; color: #0369a1; background: #e0f2fe;
+    border: 3px solid #38bdf8; border-radius: 16px; padding: 12px 28px;
+    box-shadow: 0 4px 12px rgba(2, 132, 199, 0.15); text-align: center; margin: auto;
+  }
+
+  /* Authentic Standard Long Division Layout Container */
+  .v-board-container {
+    flex: 0 0 auto; width: 100%; display: flex; justify-content: center; align-items: center; margin: 1px 0;
+  }
+  .long-div-grid {
+    display: grid; grid-template-columns: 38px 12px 38px 38px; grid-template-rows: auto auto auto auto auto auto;
+    align-items: center; justify-items: center; row-gap: 2px;
+    background: #f0f9ff; padding: 4px 10px; border-radius: 12px; border: 3px solid #0284c7;
+    box-shadow: 0 3px 8px rgba(2, 132, 199, 0.15); animation: popIn 0.3s ease;
+  }
+  .ld-label { font-size: 11px; font-weight: bold; color: #0284c7; text-align: center; }
+  
+  /* Authentic Long Division Bracket & Roof Lines */
+  .ld-bracket {
+    width: 100%; height: 100%; border-right: 3px solid #0284c7; border-radius: 0 80% 80% 0;
+  }
+  .ld-roof {
+    width: 100%; height: 100%; border-top: 3px solid #0284c7; padding-top: 2px;
+    display: flex; justify-content: center; align-items: center;
+  }
+  .ld-sub-line {
+    width: 100%; height: 3px; background: #0284c7; margin: 1px 0; border-radius: 1px;
+  }
+
+  /* Input Section */
+  .input-card {
+    flex: 0 0 auto; width: 100%; background: #ffffff; border: 2px solid #7dd3fc; border-radius: 12px; padding: 4px;
+    display: flex; flex-direction: column; gap: 3px; align-items: center;
+  }
+
+  /* Horizontal Equation Bar */
+  .equation-bar {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    width: 100%; max-width: 420px; background: #e0f2fe; padding: 4px 8px; border-radius: 10px; border: 2px solid #38bdf8;
+  }
+
+  /* Clear & Distinct Box States */
+  .eq-box {
+    width: 38px; height: 34px; font-size: 17px; font-weight: bold; text-align: center;
+    border-radius: 8px; background: #ffffff; border: 2px solid #94a3b8;
+    display: flex; align-items: center; justify-content: center; color: #1e293b; cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .eq-box.active {
+    border: 3px solid #0284c7 !important; background: #bae6fd !important; color: #0369a1 !important;
+    box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.4) !important; transform: scale(1.05); z-index: 2;
+  }
+  .eq-box.locked {
+    border: 2px solid #16a34a !important; background: #dcfce7 !important; color: #15803d !important;
+    pointer-events: none; box-shadow: none !important; transform: none !important;
+  }
+  .eq-box.disabled {
+    background: #f1f5f9 !important; border: 2px solid #cbd5e1 !important; color: #94a3b8 !important;
+    cursor: not-allowed; pointer-events: none; box-shadow: none !important;
+  }
+  .eq-box.hidden-box { visibility: hidden !important; pointer-events: none !important; }
+  .eq-box.op-box { color: #0284c7; background: #f8fafc; width: 34px; }
+  .eq-op { font-size: 20px; font-weight: bold; color: #0369a1; }
+
+  /* 4-Column Keypad */
+  .num-keypad { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; width: 100%; max-width: 320px; }
+  .key-btn {
+    height: 32px; font-size: 15px; font-weight: bold; color: #0f172a; background: #f1f5f9;
+    border: 1px solid #cbd5e1; border-radius: 8px; cursor: pointer; box-shadow: 0 2px 0 #cbd5e1;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .key-btn:active { transform: translateY(1px); box-shadow: none; }
+  .key-btn.op-key { background: #bae6fd; color: #0369a1; border-color: #38bdf8; font-size: 17px; }
+  .key-btn.del { background: #fee2e2; color: #991b1b; border-color: #fca5a5; font-size: 13px; }
+  .key-btn.submit { background: #22c55e; color: white; border-color: #16a34a; box-shadow: 0 2px 0 #15803d; grid-column: span 3; font-size: 14px; }
+
+  .feedback { font-size: 12px; font-weight: bold; min-height: 14px; text-align: center; }
+  .correct { color: #16a34a; }
+  .wrong { color: #dc2626; }
+  .hidden { display: none !important; }
+
+  /* Modals */
+  .overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 40; }
+  .modal-box {
+    background: white; border: 4px solid #0284c7; border-radius: 18px;
+    padding: 20px; text-align: center; max-width: 92%; width: 400px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2); animation: popIn 0.25s ease;
+  }
+  @keyframes popIn { 0% { transform: scale(0.7); } 100% { transform: scale(1); } }
+
+  .visual-hint-grid { display: flex; flex-direction: column; gap: 6px; margin: 8px 0; }
+  .hint-row { display: flex; flex-direction: column; gap: 4px; padding: 6px; border-radius: 10px; text-align: left; }
+  .hint-row.wrong { background: #fee2e2; border: 2px solid #f87171; }
+  .hint-row.correct { background: #dcfce7; border: 2px solid #4ade80; }
+  .hint-title { font-size: 13px; font-weight: bold; display: flex; align-items: center; gap: 6px; }
+  
+  .plates-demo-flex { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; margin-top: 2px; }
+  .plate-demo-item {
+    background: white; border: 2px solid #94a3b8; border-radius: 8px;
+    padding: 3px 8px; font-size: 22px; display: flex; align-items: center; gap: 2px;
+  }
+
+  .modal-btn { background: #0284c7; color: white; border: none; padding: 10px 20px; font-size: 16px; font-weight: bold; border-radius: 12px; cursor: pointer; }
+  .modal-btn-secondary { background: #64748b; color: white; border: none; padding: 10px 20px; font-size: 16px; font-weight: bold; border-radius: 12px; cursor: pointer; text-decoration: none; }
+
+  .tick-overlay { position: absolute; inset: 0; background: rgba(255,255,255,0.92); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 30; }
+  .tick-icon { font-size: 70px; color: #16a34a; line-height: 1; animation: bouncePop 0.4s ease; }
+  @keyframes bouncePop { 0% { transform: scale(0); } 70% { transform: scale(1.2); } 100% { transform: scale(1); } }
+</style>
+</head>
+<body>
+
+<div class="game-container">
+  <div class="header">
+    <a href="../index.html" class="back-btn">🏠 主頁</a>
+    
+    <select id="levelSelect" class="level-select" onchange="changeLevel(this.value)">
+      <option value="1">🔀 Level 1：平分概念 (圖示)</option>
+      <option value="2">🔀 Level 2：直式計算 (圖示)</option>
+      <option value="3">🔀 Level 3：直式心算 (純算式)</option>
+    </select>
+    
+    <div class="progress-container">
+      <div class="progress-dot" id="dot-1">1</div>
+      <div class="progress-dot" id="dot-2">2</div>
+      <div class="progress-dot" id="dot-3">3</div>
+      <div class="progress-dot" id="dot-4">4</div>
+      <div class="progress-dot" id="dot-5">5</div>
+    </div>
+  </div>
+
+  <div class="instruction" id="instruction">平分放入盤子</div>
+
+  <!-- Stage Card -->
+  <div class="stage-card" id="stageCard">
+    <canvas id="gameCanvas"></canvas>
+    <div class="level3-div-banner hidden" id="level3Display"></div>
+  </div>
+
+  <!-- Vertical Long Division Board -->
+  <div class="v-board-container hidden" id="verticalBoardContainer">
+    <div class="long-div-grid" id="verticalBoard">
+      <!-- Row 1: Place Value Header -->
+      <div></div><div></div><div class="ld-label">十</div><div class="ld-label">個</div>
+
+      <!-- Row 2: Quotient -->
+      <div></div><div></div><div></div>
+      <div><div class="eq-box disabled" id="vBoxQuotientOnes" onclick="focusVBox('qOnes')">🔒</div></div>
+
+      <!-- Row 3: Divisor, Bracket, Dividend Tens (Roof), Dividend Ones (Roof) -->
+      <div><div class="eq-box disabled" id="vBoxDivisor" onclick="focusVBox('divisor')">🔒</div></div>
+      <div class="ld-bracket"></div>
+      <div class="ld-roof"><div class="eq-box disabled" id="vBoxDividendTens" onclick="focusVBox('dTens')">🔒</div></div>
+      <div class="ld-roof"><div class="eq-box disabled" id="vBoxDividendOnes" onclick="focusVBox('dOnes')">🔒</div></div>
+
+      <!-- Row 4: Product Tens & Ones -->
+      <div></div><div></div>
+      <div><div class="eq-box disabled" id="vBoxProductTens" onclick="focusVBox('pTens')">🔒</div></div>
+      <div><div class="eq-box disabled" id="vBoxProductOnes" onclick="focusVBox('pOnes')">🔒</div></div>
+
+      <!-- Row 5: Line under Product -->
+      <div></div><div></div>
+      <div class="ld-sub-line"></div>
+      <div class="ld-sub-line"></div>
+
+      <!-- Row 6: Remainder -->
+      <div></div><div></div><div></div>
+      <div><div class="eq-box disabled" id="vBoxRemainder" onclick="focusVBox('remainder')">🔒</div></div>
+    </div>
+  </div>
+
+  <div class="input-card hidden" id="inputArea">
+    <!-- Level 1 Horizontal Equation Line -->
+    <div class="equation-bar" id="level1EqBar">
+      <div class="eq-box active" id="box1" onclick="focusBox(1)">?</div>
+      <div class="eq-box op-box" id="boxOp" onclick="focusBox('op')">?</div>
+      <div class="eq-box" id="box2" onclick="focusBox(2)">?</div>
+      <span class="eq-op">=</span>
+      <div class="eq-box disabled" id="box3" onclick="focusBox(3)">🔒</div>
+    </div>
+
+    <!-- Keypad -->
+    <div class="num-keypad">
+      <button class="key-btn" onclick="pressKey('7')">7</button>
+      <button class="key-btn" onclick="pressKey('8')">8</button>
+      <button class="key-btn" onclick="pressKey('9')">9</button>
+      <button class="key-btn op-key" id="opBtn1" onclick="pressKey('÷')">÷</button>
+      
+      <button class="key-btn" onclick="pressKey('4')">4</button>
+      <button class="key-btn" onclick="pressKey('5')">5</button>
+      <button class="key-btn" onclick="pressKey('6')">6</button>
+      <button class="key-btn op-key" id="opBtn2" onclick="pressKey('×')">×</button>
+      
+      <button class="key-btn" onclick="pressKey('1')">1</button>
+      <button class="key-btn" onclick="pressKey('2')">2</button>
+      <button class="key-btn" onclick="pressKey('3')">3</button>
+      <button class="key-btn del" onclick="pressDel()">⌫ 刪除</button>
+      
+      <button class="key-btn" onclick="pressKey('0')">0</button>
+      <button class="key-btn submit" onclick="submitStep()">確認送出</button>
+    </div>
+
+    <div class="feedback" id="feedback"></div>
+  </div>
+
+  <div class="tick-overlay hidden" id="successOverlay">
+    <div class="tick-icon">✔</div>
+    <div style="font-size:20px; font-weight:bold; color:#15803d; margin-top:6px;" id="successText">答對了！</div>
+  </div>
+
+  <!-- Level Completion Medal / Trophy Modal -->
+  <div class="overlay hidden" id="levelNextModal">
+    <div class="modal-box">
+      <div style="font-size: 65px;">🏆✨</div>
+      <div style="font-size: 22px; font-weight: bold; color: #0284c7; margin: 8px 0;" id="modalTitle">恭喜完成！</div>
+      <div style="font-size: 15px; color: #334155; margin-bottom: 18px;" id="modalDesc">太棒了！你已成功答對全部 5 條題目！</div>
+      <div style="display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
+        <a href="../index.html" class="modal-btn-secondary">🏠 返回選單</a>
+        <button class="modal-btn" id="nextLevelBtn">前往下一關 ➔</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="unevenModal">
+    <div class="modal-box">
+      <div class="visual-hint-grid">
+        <div class="hint-row wrong">
+          <div class="hint-title" style="color:#991b1b;">❌ 數量不平均</div>
+          <div class="plates-demo-flex" id="wrongPlatesDemo"></div>
+        </div>
+        <div class="hint-row correct">
+          <div class="hint-title" style="color:#166534;">✅ 每個盤子都要一模一樣多</div>
+          <div class="plates-demo-flex" id="correctPlatesDemo"></div>
+        </div>
+      </div>
+
+      <button class="modal-btn" onclick="closeUnevenModal()">知道了 🔄</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  let audio = null;
+  function playSound(type) {
+    if (!audio) audio = new AudioCtx();
+    const osc = audio.createOscillator(), g = audio.createGain();
+    osc.connect(g); g.connect(audio.destination);
+    const now = audio.currentTime;
+    if (type === 'pop') {
+      osc.frequency.setValueAtTime(400, now); osc.frequency.exponentialRampToValueAtTime(800, now + 0.08);
+      g.gain.setValueAtTime(0.2, now); osc.start(now); osc.stop(now + 0.08);
+    } else if (type === 'wrong') {
+      osc.type = 'sawtooth'; osc.frequency.setValueAtTime(200, now); osc.frequency.setValueAtTime(150, now + 0.15);
+      g.gain.setValueAtTime(0.3, now); osc.start(now); osc.stop(now + 0.25);
+    } else if (type === 'win') {
+      [523, 659, 783].forEach((f, i) => osc.frequency.setValueAtTime(f, now + i * 0.1));
+      g.gain.setValueAtTime(0.3, now); osc.start(now); osc.stop(now + 0.4);
+    }
+  }
+
+  let gameLevel = 1;
+  let qIndex = 0;
+  let currentQ = {};
+
+  let currentPhase = 1;
+  let activeBoxIndex = 1;
+  let valBox1 = '', valOp = '', valBox2 = '', valBox3 = '';
+  let items = [], dragged = null, hasPrompted = false;
+
+  let vPhase = 1;
+  let activeVBox = 'dOnes'; 
+  let valVDivisor = '', valVDividendTens = '', valVDividendOnes = '';
+  let valQOnes = '', valPTens = '', valPOnes = '', valRemainder = '';
+
+  const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
+
+  function changeLevel(lv) {
+    gameLevel = parseInt(lv);
+    qIndex = 0;
+    initQuestion();
+  }
+
+  function generateQuestion(idx) {
+    const icons = ['🍬', '🍓', '🍩', '🐶', '🍎', '🧁', '🎈', '🍪'];
+    const icon = icons[Math.floor(Math.random() * icons.length)];
+    let groups, perGroup;
+
+    if (idx === 0) { groups = 2; perGroup = Math.floor(Math.random() * 2) + 2; }
+    else if (idx === 1) { groups = Math.random() < 0.5 ? 2 : 3; perGroup = 3; }
+    else if (idx === 2) { groups = Math.floor(Math.random() * 3) + 2; perGroup = 4; }
+    else if (idx === 3) { groups = Math.floor(Math.random() * 3) + 3; perGroup = 4; }
+    else { groups = Math.floor(Math.random() * 3) + 3; perGroup = 5; }
+
+    return { total: groups * perGroup, groups: groups, perGroup: perGroup, icon: icon };
+  }
+
+  function updateDots() {
+    for (let i = 1; i <= 5; i++) {
+      const dot = document.getElementById(`dot-${i}`);
+      dot.className = 'progress-dot';
+      if (i - 1 < qIndex) dot.classList.add('completed');
+      else if (i - 1 === qIndex) dot.classList.add('active');
+    }
+  }
+
+  function getPoolItemPos(id, total) {
+    const poolX = 8, poolY = 6;
+    const poolW = canvas.width - 16;
+    const poolH = Math.min(85, Math.max(50, canvas.height * 0.32));
+    const cols = Math.min(total, 6);
+    const rows = Math.ceil(total / cols);
+    const cellW = (poolW - 16) / cols;
+    const cellH = (poolH - 12) / rows;
+    const c = id % cols;
+    const r = Math.floor(id / cols);
+    return {
+      x: poolX + 8 + c * cellW + cellW / 2,
+      y: poolY + 6 + r * cellH + cellH / 2
+    };
+  }
+
+  function initQuestion() {
+    document.getElementById('levelSelect').value = gameLevel;
+    document.getElementById('inputArea').classList.add('hidden');
+    document.getElementById('successOverlay').classList.add('hidden');
+    document.getElementById('unevenModal').classList.add('hidden');
+    document.getElementById('levelNextModal').classList.add('hidden');
+    document.getElementById('feedback').innerText = '';
+    hasPrompted = false;
+
+    updateDots();
+    currentQ = generateQuestion(qIndex);
+
+    const stageCard = document.getElementById('stageCard');
+
+    if (gameLevel === 1) {
+      document.getElementById('instruction').innerText = `把 ${currentQ.total} 個 ${currentQ.icon} 平分放入盤子`;
+      stageCard.classList.remove('compact');
+      stageCard.classList.remove('hidden');
+      document.getElementById('gameCanvas').classList.remove('hidden');
+      document.getElementById('level3Display').classList.add('hidden');
+      document.getElementById('verticalBoardContainer').classList.add('hidden');
+      document.getElementById('level1EqBar').classList.remove('hidden');
+
+      currentPhase = 1; activeBoxIndex = 1;
+      valBox1 = ''; valOp = ''; valBox2 = ''; valBox3 = '';
+      resetBoxesUI();
+      resize();
+      items = [];
+      for (let i = 0; i < currentQ.total; i++) {
+        const pos = getPoolItemPos(i, currentQ.total);
+        items.push({ id: i, group: -1, x: pos.x, y: pos.y });
+      }
+      draw();
+    } else if (gameLevel === 2) {
+      document.getElementById('instruction').innerText = `請平分物品並用直式計算：${currentQ.total} ÷ ${currentQ.groups}`;
+      stageCard.classList.add('compact');
+      stageCard.classList.remove('hidden');
+      document.getElementById('gameCanvas').classList.remove('hidden');
+      document.getElementById('level3Display').classList.add('hidden');
+      document.getElementById('verticalBoardContainer').classList.remove('hidden');
+      document.getElementById('level1EqBar').classList.add('hidden');
+
+      setupVerticalState();
+      resize();
+      items = [];
+      for (let i = 0; i < currentQ.total; i++) {
+        const pos = getPoolItemPos(i, currentQ.total);
+        items.push({ id: i, group: -1, x: pos.x, y: pos.y });
+      }
+      draw();
+    } else {
+      // Level 3: Pure Calculation (Large Text Banner)
+      document.getElementById('instruction').innerText = `請用直式計算除法`;
+      stageCard.classList.remove('compact');
+      stageCard.classList.remove('hidden');
+      document.getElementById('gameCanvas').classList.add('hidden');
+      document.getElementById('level3Display').classList.remove('hidden');
+      document.getElementById('level3Display').innerText = `${currentQ.total} ÷ ${currentQ.groups} = ?`;
+
+      document.getElementById('verticalBoardContainer').classList.remove('hidden');
+      document.getElementById('level1EqBar').classList.add('hidden');
+      document.getElementById('inputArea').classList.remove('hidden');
+
+      setupVerticalState();
+    }
+  }
+
+  function setupVerticalState() {
+    vPhase = 1;
+    const dividendTens = Math.floor(currentQ.total / 10);
+    activeVBox = (dividendTens > 0) ? 'dTens' : 'dOnes';
+
+    valVDivisor = ''; valVDividendTens = ''; valVDividendOnes = '';
+    valQOnes = ''; valPTens = ''; valPOnes = ''; valRemainder = '';
+    resetVBoxesUI();
+
+    document.getElementById('feedback').className = 'feedback correct';
+    document.getElementById('feedback').innerText = '🎉 第一步：請填寫直式裏面的「被除數」：';
+  }
+
+  function resetBoxesUI() {
+    const b1 = document.getElementById('box1');
+    const bOp = document.getElementById('boxOp');
+    const b2 = document.getElementById('box2');
+    const b3 = document.getElementById('box3');
+
+    b1.className = 'eq-box active'; b1.innerText = '?';
+    bOp.className = 'eq-box op-box'; bOp.innerText = '?';
+    b2.className = 'eq-box'; b2.innerText = '?';
+    b3.className = 'eq-box disabled'; b3.innerText = '🔒';
+  }
+
+  function resetVBoxesUI() {
+    updateVBoxStyle();
+  }
+
+  function focusBox(idx) {
+    if (currentPhase === 1 && (idx === 1 || idx === 'op' || idx === 2)) {
+      activeBoxIndex = idx; updateActiveBoxStyle();
+    } else if (currentPhase === 2 && idx === 3) {
+      activeBoxIndex = 3; updateActiveBoxStyle();
+    }
+  }
+
+  function focusVBox(type) {
+    if (vPhase === 1 && (type === 'divisor' || type === 'dTens' || type === 'dOnes')) {
+      const dividendTens = Math.floor(currentQ.total / 10);
+      if (dividendTens === 0 && type === 'dTens') return;
+      activeVBox = type; updateVBoxStyle();
+    } else if (vPhase === 2 && type === 'qOnes') {
+      activeVBox = 'qOnes'; updateVBoxStyle();
+    } else if (vPhase === 3 && (type === 'pTens' || type === 'pOnes')) {
+      const productTens = Math.floor(currentQ.total / 10);
+      if (productTens === 0 && type === 'pTens') return;
+      activeVBox = type; updateVBoxStyle();
+    } else if (vPhase === 4 && type === 'remainder') {
+      activeVBox = 'remainder'; updateVBoxStyle();
+    }
+  }
+
+  function updateActiveBoxStyle() {
+    if (currentPhase === 1) {
+      document.getElementById('box1').className = activeBoxIndex === 1 ? 'eq-box active' : 'eq-box';
+      document.getElementById('boxOp').className = activeBoxIndex === 'op' ? 'eq-box op-box active' : 'eq-box op-box';
+      document.getElementById('box2').className = activeBoxIndex === 2 ? 'eq-box active' : 'eq-box';
+    } else {
+      document.getElementById('box3').className = 'eq-box active';
+    }
+  }
+
+  function updateVBoxStyle() {
+    const bDivisor = document.getElementById('vBoxDivisor');
+    const bDTens = document.getElementById('vBoxDividendTens');
+    const bDOnes = document.getElementById('vBoxDividendOnes');
+    const bQ = document.getElementById('vBoxQuotientOnes');
+    const bPT = document.getElementById('vBoxProductTens');
+    const bPO = document.getElementById('vBoxProductOnes');
+    const bR = document.getElementById('vBoxRemainder');
+
+    const dividendTens = Math.floor(currentQ.total / 10);
+
+    if (vPhase === 1) {
+      if (dividendTens === 0) {
+        bDTens.className = 'eq-box hidden-box';
+      } else {
+        bDTens.classList.remove('hidden-box');
+        if (activeVBox === 'dTens') { bDTens.className = 'eq-box active'; bDTens.innerText = valVDividendTens || '?'; }
+        else if (valVDividendTens !== '') { bDTens.className = 'eq-box'; bDTens.innerText = valVDividendTens; }
+        else { bDTens.className = 'eq-box disabled'; bDTens.innerText = '🔒'; }
+      }
+
+      if (activeVBox === 'dOnes') { bDOnes.className = 'eq-box active'; bDOnes.innerText = valVDividendOnes || '?'; }
+      else if (valVDividendOnes !== '') { bDOnes.className = 'eq-box'; bDOnes.innerText = valVDividendOnes; }
+      else { bDOnes.className = 'eq-box disabled'; bDOnes.innerText = '🔒'; }
+
+      if (activeVBox === 'divisor') { bDivisor.className = 'eq-box active'; bDivisor.innerText = valVDivisor || '?'; }
+      else if (valVDivisor !== '') { bDivisor.className = 'eq-box'; bDivisor.innerText = valVDivisor; }
+      else { bDivisor.className = 'eq-box disabled'; bDivisor.innerText = '🔒'; }
+
+      bQ.className = 'eq-box disabled'; bQ.innerText = '🔒';
+      bPT.className = 'eq-box disabled'; bPT.innerText = '🔒'; bPT.classList.remove('hidden-box');
+      bPO.className = 'eq-box disabled'; bPO.innerText = '🔒';
+      bR.className = 'eq-box disabled'; bR.innerText = '🔒';
+    } else if (vPhase === 2) {
+      bDivisor.className = 'eq-box locked';
+      if (dividendTens > 0) bDTens.className = 'eq-box locked';
+      bDOnes.className = 'eq-box locked';
+
+      bQ.className = 'eq-box active';
+      bQ.innerText = valQOnes || '?';
+    } else if (vPhase === 3) {
+      bQ.className = 'eq-box locked';
+      if (dividendTens === 0) {
+        bPT.className = 'eq-box hidden-box';
+        bPO.className = 'eq-box active';
+        bPO.innerText = valPOnes || '?';
+      } else {
+        bPT.classList.remove('hidden-box');
+        if (activeVBox === 'pTens') { bPT.className = 'eq-box active'; bPT.innerText = valPTens || '?'; }
+        else if (valPTens !== '') { bPT.className = 'eq-box'; bPT.innerText = valPTens; }
+        else { bPT.className = 'eq-box disabled'; bPT.innerText = '🔒'; }
+
+        if (activeVBox === 'pOnes') { bPO.className = 'eq-box active'; bPO.innerText = valPOnes || '?'; }
+        else if (valPOnes !== '') { bPO.className = 'eq-box'; bPO.innerText = valPOnes; }
+        else { bPO.className = 'eq-box disabled'; bPO.innerText = '🔒'; }
+      }
+    } else if (vPhase === 4) {
+      bPT.className = dividendTens === 0 ? 'eq-box hidden-box' : 'eq-box locked';
+      bPO.className = 'eq-box locked';
+      bR.className = 'eq-box active';
+      bR.innerText = valRemainder || '?';
+    }
+  }
+
+  function handleLevelCompletion() {
+    document.getElementById('successOverlay').classList.add('hidden');
+    playSound('win');
+    const titleEl = document.getElementById('modalTitle');
+    const descEl = document.getElementById('modalDesc');
+    const nextBtn = document.getElementById('nextLevelBtn');
+
+    if (gameLevel === 1) {
+      titleEl.innerText = '🏆 恭喜完成 Level 1！';
+      descEl.innerText = '太棒了！你已成功答對平分概念的 5 條題目！';
+      nextBtn.innerText = '前往 Level 2 ➔';
+      nextBtn.onclick = () => { gameLevel = 2; qIndex = 0; initQuestion(); };
+    } else if (gameLevel === 2) {
+      titleEl.innerText = '🏆 恭喜完成 Level 2！';
+      descEl.innerText = '太棒了！你已成功答對直式計算的 5 條題目！';
+      nextBtn.innerText = '前往 Level 3 ➔';
+      nextBtn.onclick = () => { gameLevel = 3; qIndex = 0; initQuestion(); };
+    } else {
+      titleEl.innerText = '🏆 恭喜完成 Level 3 極限挑戰！';
+      descEl.innerText = '太厲害了！你已成功答對所有直式心算題目！';
+      nextBtn.innerText = '🔄 再玩一次';
+      nextBtn.onclick = () => { gameLevel = 3; qIndex = 0; initQuestion(); };
+    }
+
+    document.getElementById('levelNextModal').classList.remove('hidden');
+  }
+
+  function resize() {
+    canvas.width = canvas.parentElement.clientWidth;
+    canvas.height = canvas.parentElement.clientHeight;
+  }
+
+  function draw() {
+    if (gameLevel === 3) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const cfg = currentQ;
+
+    const poolH = Math.min(85, Math.max(50, canvas.height * 0.32));
+    ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 2; ctx.fillStyle = '#f0f9ff';
+    ctx.fillRect(8, 6, canvas.width - 16, poolH);
+    ctx.strokeRect(8, 6, canvas.width - 16, poolH);
+
+    const containerTopY = poolH + 12;
+    const h = canvas.height - containerTopY - 6;
+    const cols = cfg.groups <= 3 ? cfg.groups : Math.ceil(cfg.groups / 2);
+    const rows = cfg.groups <= 3 ? 1 : 2;
+
+    for (let i = 0; i < cfg.groups; i++) {
+      const cx = (canvas.width / cols) * ((i % cols) + 0.5);
+      const cy = containerTopY + (h / rows) * (Math.floor(i / cols) + 0.5);
+      const r = Math.min(canvas.width / cols, h / rows) * 0.40;
+
+      ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#0284c7'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+      const gItems = items.filter(it => it.group === i);
+      gItems.forEach((it, idx) => {
+        if (it !== dragged) {
+          const ang = (Math.PI * 2 / Math.max(gItems.length, 4)) * idx;
+          it.x = cx + (r * 0.48) * Math.cos(ang);
+          it.y = cy + (r * 0.48) * Math.sin(ang);
+        }
+      });
+    }
+
+    const itemFontSize = Math.min(46, Math.max(30, Math.floor(canvas.height * 0.12)));
+    items.forEach(it => {
+      ctx.font = `${itemFontSize}px system-ui`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(cfg.icon, it.x, it.y);
+    });
+  }
+
+  function checkPlacementEven() {
+    if (items.every(it => it.group >= 0)) {
+      const cfg = currentQ;
+      const target = cfg.perGroup;
+      const counts = new Array(cfg.groups).fill(0);
+      items.forEach(it => counts[it.group]++);
+
+      const isEven = counts.every(c => c === target);
+
+      if (isEven) {
+        playSound('win');
+        document.getElementById('inputArea').classList.remove('hidden');
+        document.getElementById('feedback').className = 'feedback correct';
+        document.getElementById('feedback').innerText = gameLevel === 1 ? '🎉 請輸入算式數字與符號：' : '🎉 第一步：請填寫直式裏面的「被除數」：';
+      } else if (!hasPrompted) {
+        hasPrompted = true;
+        playSound('wrong');
+        showVisualHintModal(counts, target);
+      }
+    }
+  }
+
+  function showVisualHintModal(counts, target) {
+    const cfg = currentQ;
+    const wrongFlex = document.getElementById('wrongPlatesDemo');
+    const correctFlex = document.getElementById('correctPlatesDemo');
+    wrongFlex.innerHTML = ''; correctFlex.innerHTML = '';
+
+    for (let i = 0; i < cfg.groups; i++) {
+      const wrongCount = counts[i] || 0;
+      const wDiv = document.createElement('div');
+      wDiv.className = 'plate-demo-item';
+      wDiv.innerHTML = `🥏 ${cfg.icon.repeat(wrongCount) || '空'}`;
+      wrongFlex.appendChild(wDiv);
+
+      const cDiv = document.createElement('div');
+      cDiv.className = 'plate-demo-item';
+      cDiv.innerHTML = `🥏 ${cfg.icon.repeat(target)}`;
+      correctFlex.appendChild(cDiv);
+    }
+
+    document.getElementById('unevenModal').classList.remove('hidden');
+  }
+
+  function closeUnevenModal() {
+    document.getElementById('unevenModal').classList.add('hidden');
+    hasPrompted = false;
+  }
+
+  function pressKey(val) {
+    playSound('pop');
+
+    if (gameLevel === 1) {
+      if (val === '÷' || val === '×') {
+        if (currentPhase === 1) {
+          valOp = val; document.getElementById('boxOp').innerText = valOp;
+          activeBoxIndex = 2; updateActiveBoxStyle();
+        }
+        return;
+      }
+
+      if (currentPhase === 1) {
+        if (activeBoxIndex === 1 && valBox1.length < 2) {
+          valBox1 += val; document.getElementById('box1').innerText = valBox1;
+        } else if (activeBoxIndex === 'op') {
+          activeBoxIndex = 2; updateActiveBoxStyle();
+          if (valBox2.length < 2) { valBox2 += val; document.getElementById('box2').innerText = valBox2; }
+        } else if (activeBoxIndex === 2 && valBox2.length < 2) {
+          valBox2 += val; document.getElementById('box2').innerText = valBox2;
+        }
+      } else if (currentPhase === 2 && activeBoxIndex === 3) {
+        if (valBox3.length < 2) { valBox3 += val; document.getElementById('box3').innerText = valBox3; }
+      }
+    } else {
+      if (val === '÷' || val === '×') return;
+
+      const dividendTens = Math.floor(currentQ.total / 10);
+
+      if (vPhase === 1) {
+        if (activeVBox === 'dTens') {
+          valVDividendTens = val; document.getElementById('vBoxDividendTens').innerText = valVDividendTens;
+          activeVBox = 'dOnes'; updateVBoxStyle();
+        } else if (activeVBox === 'dOnes') {
+          valVDividendOnes = val; document.getElementById('vBoxDividendOnes').innerText = valVDividendOnes;
+          activeVBox = 'divisor'; updateVBoxStyle();
+          document.getElementById('feedback').innerText = '🎉 輸入完成被除數！接著輸入左側的「除數」：';
+        } else if (activeVBox === 'divisor') {
+          valVDivisor = val; document.getElementById('vBoxDivisor').innerText = valVDivisor;
+        }
+      } else if (vPhase === 2) {
+        valQOnes = val; document.getElementById('vBoxQuotientOnes').innerText = valQOnes;
+      } else if (vPhase === 3) {
+        if (dividendTens === 0) {
+          valPOnes = val; document.getElementById('vBoxProductOnes').innerText = valPOnes;
+        } else {
+          if (activeVBox === 'pTens') {
+            valPTens = val; document.getElementById('vBoxProductTens').innerText = valPTens;
+            activeVBox = 'pOnes'; updateVBoxStyle();
+          } else if (activeVBox === 'pOnes') {
+            valPOnes = val; document.getElementById('vBoxProductOnes').innerText = valPOnes;
+          }
+        }
+      } else if (vPhase === 4) {
+        valRemainder = val; document.getElementById('vBoxRemainder').innerText = valRemainder;
+      }
+    }
+  }
+
+  function pressDel() {
+    playSound('pop');
+    if (gameLevel === 1) {
+      if (currentPhase === 1) {
+        if (activeBoxIndex === 2) {
+          if (valBox2.length > 0) { valBox2 = valBox2.slice(0, -1); document.getElementById('box2').innerText = valBox2 || '?'; }
+          else { activeBoxIndex = 'op'; updateActiveBoxStyle(); }
+        } else if (activeBoxIndex === 'op') {
+          valOp = ''; document.getElementById('boxOp').innerText = '?'; activeBoxIndex = 1; updateActiveBoxStyle();
+        } else if (activeBoxIndex === 1) {
+          valBox1 = valBox1.slice(0, -1); document.getElementById('box1').innerText = valBox1 || '?';
+        }
+      } else if (currentPhase === 2) {
+        valBox3 = valBox3.slice(0, -1); document.getElementById('box3').innerText = valBox3 || '?';
+      }
+    } else {
+      const dividendTens = Math.floor(currentQ.total / 10);
+
+      if (vPhase === 1) {
+        if (activeVBox === 'divisor') {
+          if (valVDivisor !== '') { valVDivisor = ''; document.getElementById('vBoxDivisor').innerText = '?'; }
+          else { activeVBox = 'dOnes'; updateVBoxStyle(); }
+        } else if (activeVBox === 'dOnes') {
+          if (valVDividendOnes !== '') { valVDividendOnes = ''; document.getElementById('vBoxDividendOnes').innerText = '?'; }
+          else if (dividendTens > 0) { activeVBox = 'dTens'; updateVBoxStyle(); }
+        } else if (activeVBox === 'dTens') {
+          valVDividendTens = ''; document.getElementById('vBoxDividendTens').innerText = '?';
+        }
+      } else if (vPhase === 2) {
+        valQOnes = ''; document.getElementById('vBoxQuotientOnes').innerText = '?';
+      } else if (vPhase === 3) {
+        if (dividendTens === 0) {
+          valPOnes = ''; document.getElementById('vBoxProductOnes').innerText = '?';
+        } else {
+          if (activeVBox === 'pOnes') {
+            if (valPOnes !== '') { valPOnes = ''; document.getElementById('vBoxProductOnes').innerText = '?'; }
+            else { activeVBox = 'pTens'; updateVBoxStyle(); }
+          } else if (activeVBox === 'pTens') {
+            valPTens = ''; document.getElementById('vBoxProductTens').innerText = '?';
+          }
+        }
+      } else if (vPhase === 4) {
+        valRemainder = ''; document.getElementById('vBoxRemainder').innerText = '?';
+      }
+    }
+  }
+
+  function submitStep() {
+    const cfg = currentQ;
+
+    if (gameLevel === 1) {
+      if (currentPhase === 1) {
+        const num1 = parseInt(valBox1);
+        const num2 = parseInt(valBox2);
+
+        if (num1 === cfg.total && valOp === '÷' && num2 === cfg.groups) {
+          playSound('win'); currentPhase = 2; activeBoxIndex = 3;
+          
+          document.getElementById('box1').className = 'eq-box locked'; document.getElementById('box1').innerText = `${cfg.total}`;
+          document.getElementById('boxOp').className = 'eq-box op-box locked'; document.getElementById('boxOp').innerText = `÷`;
+          document.getElementById('box2').className = 'eq-box locked'; document.getElementById('box2').innerText = `${cfg.groups}`;
+          document.getElementById('box3').className = 'eq-box active'; document.getElementById('box3').innerText = '?';
+
+          document.getElementById('feedback').className = 'feedback correct';
+          document.getElementById('feedback').innerText = '🎉 算式正確！請輸入答案：';
+        } else {
+          playSound('wrong'); document.getElementById('feedback').className = 'feedback wrong';
+          document.getElementById('feedback').innerText = '❌ 算式或符號不正確，請再試一次！';
+        }
+      } else if (currentPhase === 2) {
+        const ansNum = parseInt(valBox3);
+        if (ansNum === cfg.perGroup) {
+          playSound('win');
+          document.getElementById('box3').className = 'eq-box locked'; document.getElementById('box3').innerText = `${cfg.perGroup}`;
+
+          document.getElementById('successText').innerText = '答對了！';
+          document.getElementById('successOverlay').classList.remove('hidden');
+          setTimeout(() => {
+            qIndex++;
+            if (qIndex >= 5) {
+              handleLevelCompletion();
+            } else {
+              initQuestion();
+            }
+          }, 1200);
+        } else {
+          playSound('wrong'); document.getElementById('feedback').className = 'feedback wrong';
+          document.getElementById('feedback').innerText = '❌ 答案不正確，再數數看！';
+        }
+      }
+    } else {
+      // Level 2 & Level 3 Vertical Long Division Logic
+      const dividendTens = Math.floor(cfg.total / 10);
+      const dividendOnes = cfg.total % 10;
+
+      if (vPhase === 1) {
+        const subDivisor = parseInt(valVDivisor);
+        const subDTens = dividendTens > 0 ? parseInt(valVDividendTens) : 0;
+        const subDOnes = parseInt(valVDividendOnes);
+
+        if (subDivisor === cfg.groups && subDTens === dividendTens && subDOnes === dividendOnes) {
+          playSound('win'); vPhase = 2; activeVBox = 'qOnes';
+          
+          document.getElementById('vBoxDivisor').className = 'eq-box locked';
+          if (dividendTens > 0) document.getElementById('vBoxDividendTens').className = 'eq-box locked';
+          document.getElementById('vBoxDividendOnes').className = 'eq-box locked';
+
+          updateVBoxStyle();
+          document.getElementById('feedback').className = 'feedback correct';
+          document.getElementById('feedback').innerText = '🎉 被除數與除數正確！請輸入最上方的商（個位）：';
+        } else {
+          playSound('wrong'); document.getElementById('feedback').className = 'feedback wrong';
+          document.getElementById('feedback').innerText = '❌ 直式的被除數或除數不太對哦，請再核對！';
+        }
+      } else if (vPhase === 2) {
+        if (parseInt(valQOnes) === cfg.perGroup) {
+          playSound('win'); vPhase = 3;
+          document.getElementById('vBoxQuotientOnes').className = 'eq-box locked';
+          document.getElementById('vBoxQuotientOnes').innerText = cfg.perGroup;
+
+          activeVBox = (dividendTens === 0) ? 'pOnes' : 'pTens';
+          updateVBoxStyle();
+          document.getElementById('feedback').className = 'feedback correct';
+          document.getElementById('feedback').innerText = '🎉 商正確！請輸入「積」（除數 × 商）：';
+        } else {
+          playSound('wrong'); document.getElementById('feedback').className = 'feedback wrong';
+          document.getElementById('feedback').innerText = '❌ 商不太對哦，想想看每組有幾個！';
+        }
+      } else if (vPhase === 3) {
+        const subPTens = dividendTens > 0 ? parseInt(valPTens) : 0;
+        const subPOnes = parseInt(valPOnes);
+
+        if (subPTens === dividendTens && subPOnes === dividendOnes) {
+          playSound('win'); vPhase = 4; activeVBox = 'remainder';
+          
+          if (dividendTens > 0) {
+            document.getElementById('vBoxProductTens').className = 'eq-box locked';
+            document.getElementById('vBoxProductTens').innerText = dividendTens;
+          }
+          document.getElementById('vBoxProductOnes').className = 'eq-box locked';
+          document.getElementById('vBoxProductOnes').innerText = dividendOnes;
+
+          updateVBoxStyle();
+          document.getElementById('feedback').className = 'feedback correct';
+          document.getElementById('feedback').innerText = '🎉 積正確！請輸入最下方的餘數：';
+        } else {
+          playSound('wrong'); document.getElementById('feedback').className = 'feedback wrong';
+          document.getElementById('feedback').innerText = `❌ 積不正確，計算：${cfg.groups} × ${cfg.perGroup}！`;
+        }
+      } else if (vPhase === 4) {
+        if (parseInt(valRemainder) === 0) {
+          playSound('win');
+          document.getElementById('vBoxRemainder').className = 'eq-box locked';
+          document.getElementById('vBoxRemainder').innerText = '0';
+
+          document.getElementById('successText').innerText = '直式計算正確！';
+          document.getElementById('successOverlay').classList.remove('hidden');
+          setTimeout(() => {
+            qIndex++;
+            if (qIndex >= 5) {
+              handleLevelCompletion();
+            } else {
+              initQuestion();
+            }
+          }, 1200);
+        } else {
+          playSound('wrong'); document.getElementById('feedback').className = 'feedback wrong';
+          document.getElementById('feedback').innerText = '❌ 整除情況下餘數應該是 0 哦！';
+        }
+      }
+    }
+  }
+
+  function getPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return { x: clientX - rect.left, y: clientY - rect.top };
+  }
+
+  canvas.addEventListener('pointerdown', e => {
+    if (gameLevel === 3) return;
+    const p = getPos(e);
+    dragged = items.find(it => Math.hypot(it.x - p.x, it.y - p.y) < 38);
+  });
+
+  canvas.addEventListener('pointermove', e => {
+    if (dragged) { const p = getPos(e); dragged.x = p.x; dragged.y = p.y; draw(); }
+  });
+
+  canvas.addEventListener('pointerup', e => {
+    if (dragged) {
+      const cfg = currentQ;
+      const poolH = Math.min(85, Math.max(50, canvas.height * 0.32));
+      const containerTopY = poolH + 12;
+      const h = canvas.height - containerTopY - 6;
+      const cols = cfg.groups <= 3 ? cfg.groups : Math.ceil(cfg.groups / 2);
+      const rows = cfg.groups <= 3 ? 1 : 2;
+
+      let dropped = -1;
+      for (let i = 0; i < cfg.groups; i++) {
+        const cx = (canvas.width / cols) * ((i % cols) + 0.5);
+        const cy = containerTopY + (h / rows) * (Math.floor(i / cols) + 0.5);
+        const r = Math.min(canvas.width / cols, h / rows) * 0.40;
+        if (Math.hypot(cx - dragged.x, cy - dragged.y) < r) dropped = i;
+      }
+
+      dragged.group = dropped;
+      if (dropped === -1) {
+        const pos = getPoolItemPos(dragged.id, cfg.total);
+        dragged.x = pos.x; dragged.y = pos.y;
+      }
+      playSound('pop'); dragged = null; draw();
+      checkPlacementEven();
+    }
+  });
+
+  window.onresize = () => { resize(); draw(); };
+  initQuestion();
+</script>
+</body>
+</html>

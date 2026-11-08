@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>認識面積的概念 - 巨型放大版</title>
+<style>
+  * { box-sizing: border-box; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+  html, body {
+    width: 100%; height: 100%; height: 100dvh; margin: 0; padding: 12px 16px;
+    font-family: 'Comic Sans MS', 'Microsoft JhengHei', sans-serif;
+    background-color: #f0f9ff; display: flex; flex-direction: column; align-items: center; justify-content: space-between; overflow: hidden;
+  }
+  
+  header {
+    width: 100%; max-width: 980px; height: 64px; display: flex; justify-content: space-between; align-items: center;
+    padding: 0 20px; background: #ffffff; border-radius: 18px; box-shadow: 0 4px 10px rgba(0,0,0,0.06); flex-shrink: 0;
+  }
+  .back-btn { font-size: 22px; font-weight: bold; color: #0284c7; text-decoration: none; padding: 8px 18px; background: #e0f2fe; border-radius: 12px; }
+  h1 { font-size: 28px; margin: 0; color: #0284c7; font-weight: bold; }
+  
+  .progress-container { display: flex; align-items: center; gap: 10px; font-size: 20px; font-weight: bold; color: #475569; }
+  .progress-dot { width: 38px; height: 38px; border-radius: 50%; background: #cbd5e1; display: flex; align-items: center; justify-content: center; font-size: 18px; color: white; }
+  .progress-dot.active { background: #0284c7; font-weight: bold; transform: scale(1.1); }
+
+  /* 指示提示區放大 2 倍 */
+  #instruction-box {
+    font-size: 32px; font-weight: bold; color: #0f172a; background: #e0f2fe; padding: 14px 32px;
+    border-radius: 20px; margin: 6px 0; border: 4px solid #38bdf8; text-align: center; flex-shrink: 0;
+  }
+  .highlight-word { font-size: 1.4em; color: #0284c7; display: inline-block; vertical-align: middle; margin: 0 6px; font-weight: 900; }
+
+  #game-container {
+    width: 100%; max-width: 980px; flex: 1; display: flex; flex-direction: column;
+    justify-content: center; align-items: center; gap: 20px; min-height: 0;
+  }
+
+  .canvas-wrapper {
+    position: relative;
+    display: inline-block;
+    box-sizing: content-box;
+  }
+
+  .grid-matrix {
+    display: grid;
+    gap: 0;
+    position: relative;
+    z-index: 2;
+  }
+
+  /* 網格與字型放大 2-3 倍 */
+  .grid-cell {
+    border: 3px solid #64748b;
+    background-color: #ffffff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 52px; /* 數字特大 */
+    font-weight: 900;
+    color: #ffffff;
+    box-sizing: border-box;
+    margin: 0;
+    transition: background-color 0.15s ease;
+  }
+
+  .grid-cell.filled {
+    background-color: #0284c7;
+    border-color: #0369a1;
+  }
+
+  .empty-cell {
+    visibility: hidden;
+    pointer-events: none;
+    border: none !important;
+  }
+
+  .shape-outline-svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 3;
+    pointer-events: none;
+  }
+
+  #success-overlay {
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    display: none; align-items: center; justify-content: center;
+    background: rgba(255, 255, 255, 0.4); z-index: 999; pointer-events: none;
+  }
+  .green-tick {
+    font-size: 220px; color: #22c55e;
+    text-shadow: 0 10px 30px rgba(34, 197, 94, 0.4);
+    animation: popScale 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  }
+
+  @keyframes popScale {
+    0% { transform: scale(0); opacity: 0; }
+    60% { transform: scale(1.2); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  #reward-modal {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7);
+    display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 1000;
+  }
+  .reward-content { background: white; padding: 50px 60px; border-radius: 30px; text-align: center; }
+  .hand-icon { font-size: 120px; margin-bottom: 10px; animation: waveHand 1s infinite alternate ease-in-out; }
+  @keyframes waveHand { from { transform: rotate(-10deg); } to { transform: rotate(10deg); } }
+  .btn-restart { padding: 20px 44px; font-size: 32px; background-color: #0284c7; color: white; border: none; border-radius: 20px; cursor: pointer; font-weight: bold; box-shadow: 0 8px 20px rgba(2, 132, 199, 0.3); margin-top: 20px; }
+  .btn-restart:active { transform: scale(0.95); }
+</style>
+</head>
+<body>
+
+<header>
+  <a href="../index.html" class="back-btn">🏠 主選單</a>
+  <h1>認識面積的概念</h1>
+  <div class="progress-container">
+    <span>進度：</span>
+    <div class="progress-dot" id="dot-1">1</div>
+    <div class="progress-dot" id="dot-2">2</div>
+    <div class="progress-dot" id="dot-3">3</div>
+    <div class="progress-dot" id="dot-4">4</div>
+    <div class="progress-dot" id="dot-5">5</div>
+    <div class="progress-dot" id="dot-6">6</div>
+  </div>
+</header>
+
+<div id="instruction-box">請<span class="highlight-word">逐個格仔點擊</span>把它填滿！</div>
+
+<div id="game-container"></div>
+
+<div id="success-overlay"><div class="green-tick">✔</div></div>
+
+<div id="reward-modal">
+  <div class="reward-content">
+    <div class="hand-icon">🙋‍♂️</div>
+    <h2 style="font-size: 42px; color: #0284c7; margin: 16px 0;">你完成了！舉手等候老師</h2>
+    <button class="btn-restart" onclick="restartGame()">重新開始 🔄</button>
+  </div>
+</div>
+
+<script>
+  // 格仔尺寸 (cellSize) 提升至 100px-110px 巨型化
+  const levels = [
+    {
+      name: "3x3 正方形",
+      cellSize: 105,
+      map: [
+        [1, 1, 1],
+        [1, 1, 1],
+        [1, 1, 1]
+      ]
+    },
+    {
+      name: "4x2 長方形",
+      cellSize: 105,
+      map: [
+        [1, 1, 1, 1],
+        [1, 1, 1, 1]
+      ]
+    },
+    {
+      name: "L 型圖形",
+      cellSize: 100,
+      map: [
+        [1, 0, 0],
+        [1, 0, 0],
+        [1, 1, 1]
+      ]
+    },
+    {
+      name: "T 型圖形",
+      cellSize: 100,
+      map: [
+        [1, 1, 1],
+        [0, 1, 0],
+        [0, 1, 0]
+      ]
+    },
+    {
+      name: "階梯型",
+      cellSize: 100,
+      map: [
+        [1, 0, 0],
+        [1, 1, 0],
+        [1, 1, 1]
+      ]
+    },
+    {
+      name: "十字型圖形",
+      cellSize: 95,
+      map: [
+        [0, 1, 0],
+        [1, 1, 1],
+        [0, 1, 0]
+      ]
+    }
+  ];
+
+  let currentStep = 0;
+  let filledCount = 0;
+  let totalCells = 0;
+  let isChecking = false;
+
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  function playClickSound() {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.frequency.setValueAtTime(400 + (filledCount * 35), audioCtx.currentTime);
+    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+    osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+  }
+
+  function playSound(type) {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    if (type === 'success') {
+      const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.frequency.setValueAtTime(523.25, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(659.25, audioCtx.currentTime + 0.15);
+      gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+      osc.start(); osc.stop(audioCtx.currentTime + 0.2);
+    } else if (type === 'complete') {
+      [523, 659, 783, 1046].forEach((freq, idx) => {
+        const o = audioCtx.createOscillator(); const g = audioCtx.createGain();
+        o.connect(g); o.connect(audioCtx.destination); o.frequency.value = freq;
+        g.gain.setValueAtTime(0.2, audioCtx.currentTime + idx * 0.1);
+        o.start(audioCtx.currentTime + idx * 0.1); o.stop(audioCtx.currentTime + idx * 0.1 + 0.3);
+      });
+    }
+  }
+
+  function speak(text) {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const msg = new SpeechSynthesisUtterance(text);
+      msg.lang = 'zh-HK'; msg.rate = 0.85;
+      window.speechSynthesis.speak(msg);
+    }
+  }
+
+  function generateOutlinePath(map, cSize) {
+    const rows = map.length;
+    const cols = map[0].length;
+    let pathD = "";
+
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        if (map[r][c] === 1) {
+          const x = c * cSize;
+          const y = r * cSize;
+          if (r === 0 || map[r - 1][c] === 0) pathD += `M ${x} ${y} L ${x + cSize} ${y} `;
+          if (r === rows - 1 || map[r + 1][c] === 0) pathD += `M ${x} ${y + cSize} L ${x + cSize} ${y + cSize} `;
+          if (c === 0 || map[r][c - 1] === 0) pathD += `M ${x} ${y} L ${x} ${y + cSize} `;
+          if (c === cols - 1 || map[r][c + 1] === 0) pathD += `M ${x + cSize} ${y} L ${x + cSize} ${y + cSize} `;
+        }
+      }
+    }
+    return pathD;
+  }
+
+  function renderLevel() {
+    isChecking = false;
+    filledCount = 0;
+    const lvl = levels[currentStep];
+    const container = document.getElementById('game-container');
+    
+    for(let i=1; i<=levels.length; i++) {
+      const dot = document.getElementById(`dot-${i}`);
+      if(dot) dot.classList.toggle('active', i <= currentStep + 1);
+    }
+
+    const rows = lvl.map.length;
+    const cols = lvl.map[0].length;
+    const cSize = lvl.cellSize;
+    
+    let cellsHtml = '';
+    totalCells = 0;
+
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        if (lvl.map[r][c] === 1) {
+          totalCells++;
+          cellsHtml += `<div class="grid-cell" style="width:${cSize}px; height:${cSize}px;" onclick="clickCell(this)"></div>`;
+        } else {
+          cellsHtml += `<div class="empty-cell" style="width:${cSize}px; height:${cSize}px;"></div>`;
+        }
+      }
+    }
+
+    const pathD = generateOutlinePath(lvl.map, cSize);
+    const totalW = cols * cSize;
+    const totalH = rows * cSize;
+
+    container.innerHTML = `
+      <div style="font-size: 28px; font-weight: bold; color: #0284c7;">
+        進度：<span id="fill-progress">0</span> / ${totalCells} 格
+      </div>
+      <div class="canvas-wrapper" style="width:${totalW}px; height:${totalH}px;">
+        <div class="grid-matrix" style="
+          grid-template-columns: repeat(${cols}, ${cSize}px);
+          grid-template-rows: repeat(${rows}, ${cSize}px);
+        ">
+          ${cellsHtml}
+        </div>
+        <svg class="shape-outline-svg" viewBox="0 0 ${totalW} ${totalH}">
+          <path d="${pathD}" stroke="#0f172a" stroke-width="6" stroke-linecap="square" fill="none" />
+        </svg>
+      </div>
+    `;
+
+    if(currentStep === 0) speak("請逐個格仔點擊把它填滿！");
+  }
+
+  function clickCell(el) {
+    if (isChecking || el.classList.contains('filled')) return;
+
+    filledCount++;
+    el.classList.add('filled');
+    el.innerText = filledCount;
+    playClickSound();
+    document.getElementById('fill-progress').innerText = filledCount;
+
+    if (filledCount === totalCells) {
+      checkComplete();
+    }
+  }
+
+  function checkComplete() {
+    isChecking = true;
+    triggerSuccessOverlay(() => {
+      currentStep++;
+      if(currentStep >= levels.length) {
+        playSound('complete');
+        document.getElementById('reward-modal').style.display = 'flex';
+        speak("你完成了！舉手等候老師");
+      } else {
+        renderLevel();
+      }
+    });
+  }
+
+  function triggerSuccessOverlay(callback) {
+    playSound('success');
+    const overlay = document.getElementById('success-overlay');
+    overlay.style.display = 'flex';
+    setTimeout(() => {
+      overlay.style.display = 'none';
+      if(callback) callback();
+    }, 600);
+  }
+
+  function restartGame() {
+    document.getElementById('reward-modal').style.display = 'none';
+    currentStep = 0;
+    renderLevel();
+  }
+
+  window.onload = () => renderLevel();
+</script>
+</body>
+</html>

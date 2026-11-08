@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>邏輯大冒險</title>
+    <style>
+        * { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
+        
+        body {
+            width: 100vw; height: 100dvh; margin: 0; padding: 10px;
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: #f0f8ff; display: flex; flex-direction: column; align-items: center; overflow: hidden;
+        }
+
+        .game-container { 
+            width: 100%; max-width: 600px; height: 100%; display: flex; flex-direction: column; gap: 8px; position: relative; 
+        }
+
+        /* 頂部導覽 */
+        .header {
+            display: flex; justify-content: space-between; align-items: center;
+            background: #ffffff; padding: 8px 12px; border-radius: 14px; border: 3px solid #bfdbfe;
+        }
+
+        .back-btn {
+            background: #ef4444; color: white; border: none; padding: 6px 12px; border-radius: 10px;
+            font-size: 14px; font-weight: bold; text-decoration: none; box-shadow: 0 3px 0 #b91c1c;
+        }
+
+        .stage-badge {
+            background: #dbeafe; color: #1e40af; border: 2px solid #93c5fd; padding: 4px 10px;
+            border-radius: 12px; font-weight: bold; font-size: 15px;
+        }
+        
+        /* 圓點進度條 */
+        .progress-container { display: flex; align-items: center; gap: 6px; }
+        .progress-dot {
+            width: 22px; height: 22px; border-radius: 50%; background: #e2e8f0; border: 2px solid #cbd5e1;
+            display: flex; align-items: center; justify-content: center; font-size: 12px; color: #64748b; font-weight: bold;
+        }
+        .progress-dot.active { background: #bfdbfe; border-color: #3b82f6; color: #1d4ed8; }
+        .progress-dot.completed { background: #22c55e; border-color: #15803d; color: white; }
+
+        /* 關卡看板 */
+        .stage-banner-card {
+            background: linear-gradient(135deg, #2563eb, #3b82f6);
+            color: white; border-radius: 14px; padding: 8px 14px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .stage-banner-title { font-size: 16px; font-weight: bold; }
+
+        /* 滑出通知 */
+        .toast-notification {
+            position: absolute; top: -60px; left: 0; width: 100%; padding: 10px 0;
+            font-size: 16px; font-weight: bold; color: white; text-align: center;
+            transition: top 0.3s ease-in-out; z-index: 25; border-radius: 0 0 14px 14px;
+        }
+        .toast-notification.show { top: 0; }
+        .toast-notification.correct { background-color: #22c55e; }
+        .toast-notification.wrong { background-color: #ef4444; }
+
+        .shake { animation: shakeAnim 0.4s ease-in-out; }
+        @keyframes shakeAnim {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-8px); }
+            40%, 80% { transform: translateX(8px); }
+        }
+
+        /* 題目卡片 */
+        .display-card {
+            flex: 1; min-height: 140px; background: #ffffff; border: 3px solid #93c5fd;
+            border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px;
+        }
+
+        .question-title-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+        .question-title { font-size: 20px; font-weight: bold; color: #1e3a8a; text-align: center; }
+
+        .speaker-btn {
+            background: #3b82f6; color: white; border: none; border-radius: 50%; width: 34px; height: 34px;
+            font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 2px 0 #1d4ed8; flex-shrink: 0;
+        }
+
+        /* 題目圖案呈現 */
+        .pattern-display-row {
+            display: flex; justify-content: center; align-items: center; gap: 10px;
+            flex-wrap: nowrap; width: 100%; font-size: 2.2em; min-height: 70px;
+        }
+
+        .pattern-display-grid {
+            display: grid; grid-template-columns: repeat(2, 75px); grid-gap: 12px;
+            justify-content: center; align-items: center; font-size: 2.2em; min-height: 140px;
+        }
+
+        .pattern-item {
+            background: #f8fafc; padding: 6px 12px; border-radius: 12px;
+            border: 2px solid #cbd5e1; display: flex; justify-content: center; align-items: center;
+        }
+
+        .pattern-target {
+            background: #fef08a; border: 3px dashed #f59e0b; color: #b45309;
+            padding: 6px 16px; border-radius: 12px; font-weight: bold;
+            display: flex; justify-content: center; align-items: center;
+        }
+
+        /* 選項按鈕區 */
+        .input-card {
+            background: #ffffff; border: 3px solid #93c5fd; border-radius: 16px; padding: 12px;
+            display: flex; flex-direction: column; gap: 8px; align-items: center;
+        }
+
+        .mcq-container { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; max-width: 380px; }
+        .mcq-btn {
+            height: 60px; font-size: 26px; font-weight: bold; background: #eff6ff; color: #1e40af;
+            border: 3px solid #60a5fa; border-radius: 14px; cursor: pointer; box-shadow: 0 4px 0 #2563eb;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .mcq-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #2563eb; }
+
+        .feedback { font-size: 16px; font-weight: bold; min-height: 22px; text-align: center; }
+        .wrong { color: #dc2626; }
+        .hidden { display: none !important; }
+
+        /* 答對大勾勾 */
+        .big-tick-overlay {
+            position: absolute; inset: 0; background: rgba(255,255,255,0.92);
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            border-radius: 16px; z-index: 20;
+        }
+        .big-tick-icon { font-size: 110px; color: #16a34a; line-height: 1; }
+        .big-tick-text { font-size: 26px; font-weight: bold; color: #15803d; margin-top: 10px; }
+
+        /* 彈窗 */
+        .modal-overlay {
+            position: absolute; inset: 0; background: rgba(0,0,0,0.6); display: flex;
+            justify-content: center; align-items: center; border-radius: 16px; z-index: 30;
+        }
+        .modal-content {
+            background: white; border-radius: 20px; padding: 24px; text-align: center;
+            border: 4px solid #3b82f6; box-shadow: 0 10px 25px rgba(0,0,0,0.2); width: 85%;
+        }
+        .modal-title { font-size: 24px; color: #1d4ed8; font-weight: bold; margin-bottom: 12px; }
+        .modal-btn {
+            margin-top: 16px; background: #22c55e; color: white; border: none; padding: 12px 28px;
+            font-size: 20px; font-weight: bold; border-radius: 14px; cursor: pointer; box-shadow: 0 4px 0 #15803d;
+        }
+    </style>
+</head>
+<body>
+
+<div class="game-container" id="game-card">
+    <div id="toast" class="toast-notification"></div>
+
+    <div class="header">
+        <a href="../index.html" class="back-btn">🏠 主頁</a>
+        <div class="stage-badge" id="stageBadge">第 1 關</div>
+        <div class="progress-container">
+            <div class="progress-dot" id="dot-1">1</div>
+            <div class="progress-dot" id="dot-2">2</div>
+            <div class="progress-dot" id="dot-3">3</div>
+            <div class="progress-dot" id="dot-4">4</div>
+            <div class="progress-dot" id="dot-5">5</div>
+        </div>
+    </div>
+
+    <!-- 關卡名稱 -->
+    <div class="stage-banner-card">
+        <div class="stage-banner-title" id="stageBannerTitle">🔹 第 1 關：純色圖形重複</div>
+    </div>
+
+    <!-- 題目區域 -->
+    <div class="display-card">
+        <div class="question-title-row">
+            <div class="question-title" id="question-title">下一個是什麼？</div>
+            <button class="speaker-btn" onclick="speakCurrentQuestion()">🔊</button>
+        </div>
+        <div id="pattern-container" class="pattern-display-row"></div>
+    </div>
+
+    <!-- 選項區 -->
+    <div class="input-card">
+        <div class="mcq-container" id="mcqContainer"></div>
+        <div class="feedback" id="feedback"></div>
+    </div>
+
+    <!-- 答對畫面的大勾勾 -->
+    <div class="big-tick-overlay hidden" id="bigTickOverlay">
+        <div class="big-tick-icon">✔</div>
+        <div class="big-tick-text">答對了！</div>
+    </div>
+
+    <!-- 通關 / 重試彈窗 -->
+    <div class="modal-overlay hidden" id="levelModal">
+        <div class="modal-content">
+            <div class="modal-title" id="modalTitle">🎉 太棒了！</div>
+            <p id="modalDesc" style="font-size:18px; font-weight:bold; color:#334155;">準備好過下一關了嗎？</p>
+            <button class="modal-btn" id="modalBtn" onclick="closeModal()">下一關 🚀</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    let audioCtx = null;
+
+    function initAudio() {
+        if (!audioCtx) audioCtx = new AudioContext();
+    }
+
+    function playSound(type) {
+        initAudio();
+        if (!audioCtx) return;
+
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        const now = audioCtx.currentTime;
+
+        if (type === 'correct') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(523.25, now);
+            osc.frequency.setValueAtTime(659.25, now + 0.1);
+            osc.frequency.setValueAtTime(783.99, now + 0.2);
+            gain.gain.setValueAtTime(0.3, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+            osc.start(now); osc.stop(now + 0.4);
+        } else if (type === 'wrong') {
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(180, now);
+            osc.frequency.setValueAtTime(140, now + 0.15);
+            gain.gain.setValueAtTime(0.3, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+            osc.start(now); osc.stop(now + 0.3);
+        } else if (type === 'levelup') {
+            osc.type = 'triangle';
+            [440, 554.37, 659.25, 880].forEach((freq, i) => {
+                osc.frequency.setValueAtTime(freq, now + i * 0.1);
+            });
+            gain.gain.setValueAtTime(0.4, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+            osc.start(now); osc.stop(now + 0.6);
+        }
+    }
+
+    function speakText(text) {
+        if (!('speechSynthesis' in window)) return;
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'zh-HK';
+        utterance.rate = 0.85; 
+        window.speechSynthesis.speak(utterance);
+    }
+
+    function speakCurrentQuestion() {
+        const titleText = document.getElementById('question-title').innerText;
+        speakText(titleText);
+    }
+
+    // --- 圖案庫 ---
+    const PURE_SHAPES = ['🔴', '🟡', '🟦', '🟩', '⭐', '❤️']; // 第1關：極簡純色圖形
+    const SIMPLE_FOODS = ['🍩', '🍎', '🍌', '🍕', '🍞', '🥑']; // 第2、4、5關：簡單食物
+    const ARROWS = ['⬆️', '➡️', '⬇️', '⬅️']; // 方向箭頭
+
+    let stage = 1;
+    let currentQIndex = 1;
+    let correctAnswer = '';
+    let isProcessing = false;
+    let stageHasErrors = false;
+
+    window.onload = function() {
+        initQuestion();
+    };
+
+    function updateDots() {
+        for (let i = 1; i <= 5; i++) {
+            const dot = document.getElementById(`dot-${i}`);
+            dot.className = 'progress-dot';
+            if (i < currentQIndex) dot.classList.add('completed');
+            else if (i === currentQIndex) dot.classList.add('active');
+        }
+    }
+
+    function updateStageBanner() {
+        const names = {
+            1: '🔹 第 1 關：純色圖形規律',
+            2: '🔹 第 2 關：簡單食物數量',
+            3: '🔹 第 3 關：方向與位置',
+            4: '🔹 第 4 關：圖形與食物交替',
+            5: '🔹 第 5 關：數量變多規律'
+        };
+        document.getElementById('stageBadge').innerText = `第 ${stage} 關`;
+        document.getElementById('stageBannerTitle').innerText = names[stage];
+    }
+
+    function initQuestion() {
+        isProcessing = false;
+        updateDots();
+        updateStageBanner();
+        document.getElementById('feedback').innerText = '';
+
+        if (stage === 1) generateStage1(currentQIndex);
+        else if (stage === 2) generateStage2(currentQIndex);
+        else if (stage === 3) generateStage3(currentQIndex);
+        else if (stage === 4) generateStage4(currentQIndex);
+        else if (stage === 5) generateStage5(currentQIndex);
+
+        setTimeout(speakCurrentQuestion, 300);
+    }
+
+    // 通用渲染：支援「猜最後」與「猜中間」
+    function renderPatternList(pattern, targetIndex) {
+        const container = document.getElementById('pattern-container');
+        container.className = 'pattern-display-row';
+        
+        let html = '';
+        pattern.forEach((item, idx) => {
+            if (idx === targetIndex) {
+                html += `<div class="pattern-target">?</div>`;
+            } else {
+                html += `<div class="pattern-item">${item}</div>`;
+            }
+        });
+        container.innerHTML = html;
+    }
+
+    // --- 第 1 關：純幾何圖形交替 ---
+    function generateStage1(qNum) {
+        let pool = [...PURE_SHAPES].sort(() => 0.5 - Math.random());
+        let A = pool[0], B = pool[1], C = pool[2];
+
+        if (qNum < 5) { // 第 1 - 4 題：猜最後
+            document.getElementById('question-title').innerText = "下一個是什麼？";
+            let seq = (qNum <= 2) ? [A, B, A, B] : [A, B, C, A, B];
+            correctAnswer = (qNum <= 2) ? A : C;
+            renderPatternList(seq.concat('?'), seq.length);
+        } else { // 第 5 題：中間填空！
+            document.getElementById('question-title').innerText = "中間缺少了什麼？";
+            let seq = [A, B, A, B, A];
+            correctAnswer = B;
+            renderPatternList([A, B, '?', B, A], 2);
+        }
+        renderOptions(correctAnswer, PURE_SHAPES);
+    }
+
+    // --- 第 2 關：簡單食物遞增 ---
+    function generateStage2(qNum) {
+        let food = SIMPLE_FOODS[Math.floor(Math.random() * SIMPLE_FOODS.length)];
+
+        if (qNum < 5) {
+            document.getElementById('question-title').innerText = "數一數，下一個是？";
+            let seq = [food, food.repeat(2), food.repeat(3)];
+            correctAnswer = food.repeat(4);
+            renderPatternList(seq.concat('?'), 3);
+            renderOptionsCustom(correctAnswer, [food.repeat(2), food.repeat(3), food.repeat(5)]);
+        } else { // 第 5 題：中間填空！
+            document.getElementById('question-title').innerText = "中間缺少了什麼？";
+            correctAnswer = food.repeat(2);
+            renderPatternList([food, '?', food.repeat(3), food.repeat(4)], 1);
+            renderOptionsCustom(correctAnswer, [food, food.repeat(3), food.repeat(5)]);
+        }
+    }
+
+    // --- 第 3 關：箭頭與位置 ---
+    function generateStage3(qNum) {
+        if (qNum < 5) {
+            let arr = [...ARROWS].sort(() => 0.5 - Math.random());
+            document.getElementById('question-title').innerText = "順著箭頭選：";
+            correctAnswer = arr[3];
+            renderPatternList([arr[0], arr[1], arr[2], '?'], 3);
+            renderOptionsCustom(correctAnswer, [arr[0], arr[1], arr[2]]);
+        } else { // 第 5 題：中間填空！
+            let arr = [...ARROWS];
+            document.getElementById('question-title').innerText = "中間缺少了什麼？";
+            correctAnswer = arr[1]; // ➡️
+            renderPatternList([arr[0], '?', arr[2], arr[3]], 1);
+            renderOptionsCustom(correctAnswer, [arr[0], arr[2], arr[3]]);
+        }
+    }
+
+    // --- 第 4 關：圖形與食物交替 ---
+    function generateStage4(qNum) {
+        let shape = PURE_SHAPES[Math.floor(Math.random() * PURE_SHAPES.length)];
+        let food = SIMPLE_FOODS[Math.floor(Math.random() * SIMPLE_FOODS.length)];
+
+        if (qNum < 5) {
+            document.getElementById('question-title').innerText = "看圖選選看：";
+            correctAnswer = food;
+            renderPatternList([shape, food, shape, food, shape, '?'], 5);
+        } else { // 第 5 題：中間填空！
+            document.getElementById('question-title').innerText = "中間缺少了什麼？";
+            correctAnswer = shape;
+            renderPatternList([shape, food, '?', food, shape], 2);
+        }
+        renderOptionsCustom(correctAnswer, [shape, food, PURE_SHAPES[1], SIMPLE_FOODS[1]]);
+    }
+
+    // --- 第 5 關：數量遞增 ---
+    function generateStage5(qNum) {
+        let food = SIMPLE_FOODS[Math.floor(Math.random() * SIMPLE_FOODS.length)];
+
+        if (qNum < 5) {
+            document.getElementById('question-title').innerText = "數量變多了！下一個？";
+            correctAnswer = food.repeat(6);
+            renderPatternList([food, food.repeat(2), food.repeat(4), '?'], 3);
+            renderOptionsCustom(correctAnswer, [food.repeat(3), food.repeat(5), food.repeat(8)]);
+        } else { // 第 5 題：中間填空！
+            document.getElementById('question-title').innerText = "中間缺少了什麼？";
+            correctAnswer = food.repeat(3);
+            renderPatternList([food, food.repeat(2), '?', food.repeat(4)], 2);
+            renderOptionsCustom(correctAnswer, [food, food.repeat(5), food.repeat(6)]);
+        }
+    }
+
+    function renderOptions(correct, pool) {
+        let options = [correct];
+        while (options.length < 4) {
+            let rand = pool[Math.floor(Math.random() * pool.length)];
+            if (!options.includes(rand)) options.push(rand);
+        }
+        options.sort(() => 0.5 - Math.random());
+        buildOptionButtons(options);
+    }
+
+    function renderOptionsCustom(correct, distractors) {
+        let options = [correct, ...distractors.slice(0, 3)];
+        options = [...new Set(options)].sort(() => 0.5 - Math.random());
+        buildOptionButtons(options);
+    }
+
+    function buildOptionButtons(options) {
+        const container = document.getElementById('mcqContainer');
+        container.innerHTML = options.map(opt => 
+            `<button class="mcq-btn" onclick="checkAnswer('${opt}')">${opt}</button>`
+        ).join('');
+    }
+
+    // 檢查答案
+    function checkAnswer(selected) {
+        if (isProcessing) return;
+
+        if (selected === correctAnswer) {
+            isProcessing = true;
+            showBigTickAndNext();
+        } else {
+            stageHasErrors = true;
+            playSound('wrong');
+            speakText('再試一次！');
+            showToast('💪 再試一次！', 'wrong');
+            shakeCard();
+            document.getElementById('feedback').className = 'feedback wrong';
+            document.getElementById('feedback').innerText = '再試一次喔！';
+            setTimeout(hideToast, 1200);
+        }
+    }
+
+    function showBigTickAndNext() {
+        playSound('correct');
+        speakText('答對了！');
+        showToast('🎉 答對了！', 'correct');
+        const overlay = document.getElementById('bigTickOverlay');
+        overlay.classList.remove('hidden');
+
+        setTimeout(() => {
+            overlay.classList.add('hidden');
+            hideToast();
+            currentQIndex++;
+
+            if (currentQIndex > 5) {
+                if (stageHasErrors) {
+                    triggerRetryStage();
+                } else {
+                    if (stage < 5) {
+                        stage++;
+                        triggerLevelUp();
+                    } else {
+                        stage = 1;
+                        triggerLevelUp('🏆 太棒了！你通關了！');
+                    }
+                }
+            } else {
+                initQuestion();
+            }
+        }, 1200);
+    }
+
+    function showToast(msg, type) {
+        const toast = document.getElementById('toast');
+        toast.innerText = msg;
+        toast.className = `toast-notification ${type} show`;
+    }
+
+    function hideToast() {
+        document.getElementById('toast').className = 'toast-notification';
+    }
+
+    function shakeCard() {
+        const card = document.getElementById('game-card');
+        card.classList.add('shake');
+        setTimeout(() => card.classList.remove('shake'), 400);
+    }
+
+    function triggerLevelUp(customText) {
+        playSound('levelup');
+        document.getElementById('modalTitle').innerText = customText ? customText : `🎉 恭喜通過第 ${stage-1} 關！`;
+        speakText(customText ? '太棒了！你通關了！' : '太棒了！準備過下一關！');
+
+        document.getElementById('modalDesc').innerText = customText ? '你玩得非常棒！' : '準備好挑戰下一關了嗎？';
+        document.getElementById('modalBtn').innerText = customText ? '再玩一次 🔄' : '下一關 🚀';
+        
+        stageHasErrors = false;
+        currentQIndex = 1;
+        document.getElementById('levelModal').classList.remove('hidden');
+    }
+
+    function triggerRetryStage() {
+        playSound('wrong');
+        document.getElementById('modalTitle').innerText = `💪 再試一次！`;
+        speakText('再試一次，你可以的！');
+
+        document.getElementById('modalDesc').innerText = `加油！再試一次喔！`;
+        document.getElementById('modalBtn').innerText = '再試一次 🔄';
+
+        stageHasErrors = false;
+        currentQIndex = 1;
+        document.getElementById('levelModal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+        document.getElementById('levelModal').classList.add('hidden');
+        initQuestion();
+    }
+</script>
+
+</body>
+</html>
